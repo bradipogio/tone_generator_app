@@ -66,6 +66,7 @@ const elements = {
   powerButton: document.getElementById("powerButton"),
   powerIcon: document.getElementById("powerIcon"),
   volumeInput: document.getElementById("volumeInput"),
+  volumeFill: document.getElementById("volumeFill"),
   decreaseButton: document.getElementById("decreaseButton"),
   increaseButton: document.getElementById("increaseButton"),
   sweepStartSlider: document.getElementById("sweepStartSlider"),
@@ -300,7 +301,7 @@ function updateFrequencyUI() {
 function updateVolumeUI() {
   const volumePercentage = Math.round(state.volume * 100);
   elements.volumeInput.value = String(volumePercentage);
-  elements.volumeInput.style.setProperty("--volume-progress", `${volumePercentage}%`);
+  elements.volumeFill.style.width = `${volumePercentage}%`;
 }
 
 function updateSweepUI() {

@@ -128,15 +128,18 @@
         <label class="field volume-field">
           <span class="sr-only">Volume</span>
           <div class="range-row volume-row">
-            <input
-              id="volumeInput"
-              class="volume-slider"
-              type="range"
-              min="0"
-              max="100"
-              step="1"
-              value="10"
-            />
+            <div class="volume-slider-shell">
+              <div id="volumeFill" class="volume-slider-fill" aria-hidden="true"></div>
+              <input
+                id="volumeInput"
+                class="volume-slider"
+                type="range"
+                min="0"
+                max="100"
+                step="1"
+                value="10"
+              />
+            </div>
             <span class="volume-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24" focusable="false">
                 <path d="M4 14h3.4L12 18V6L7.4 10H4z" />
