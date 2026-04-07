@@ -90,40 +90,11 @@ function parseFrequency(value, fallback = state.frequency) {
     return fallback;
   }
 
-  return clamp(parsed, MIN_FREQUENCY, MAX_FREQUENCY);
-}
-
-function parseSweepSpeed(value, fallback = state.sweep.speed) {
-  const parsed = Number.parseFloat(value);
-  if (!Number.isFinite(parsed) || parsed <= 0) {
-    return fallback;
-  }
-
-  return clamp(parsed, SWEEP_SPEED_MIN, SWEEP_SPEED_MAX);
+  return Math.round(clamp(parsed, MIN_FREQUENCY, MAX_FREQUENCY));
 }
 
 function formatFrequency(value) {
-  if (value >= 1000) {
-    return value.toLocaleString("it-IT", { maximumFractionDigits: 0 });
-  }
-
-  if (value >= 100) {
-    return value.toFixed(1).replace(/\.0$/, "");
-  }
-
-  return value.toFixed(2).replace(/\.?0+$/, "");
-}
-
-function formatSpeed(value) {
-  if (value >= 1000) {
-    return value.toLocaleString("it-IT", { maximumFractionDigits: 0 });
-  }
-
-  if (value >= 10) {
-    return value.toFixed(1).replace(/\.0$/, "");
-  }
-
-  return value.toFixed(2).replace(/\.?0+$/, "");
+  return Math.round(value).toLocaleString("it-IT");
 }
 
 function sliderValueToLogValue(sliderValue, minValue, maxValue, sliderMax) {
@@ -144,7 +115,9 @@ function logValueToSliderValue(value, minValue, maxValue, sliderMax) {
 }
 
 function sliderValueToFrequency(sliderValue) {
-  return sliderValueToLogValue(sliderValue, MIN_FREQUENCY, MAX_FREQUENCY, FREQUENCY_SLIDER_MAX);
+  return Math.round(
+    sliderValueToLogValue(sliderValue, MIN_FREQUENCY, MAX_FREQUENCY, FREQUENCY_SLIDER_MAX),
+  );
 }
 
 function frequencyToSliderValue(frequency) {
@@ -163,14 +136,14 @@ function interpolateLogFrequency(startFrequency, endFrequency, progress) {
   const normalizedProgress = clamp(progress, 0, 1);
 
   if (startFrequency === endFrequency) {
-    return startFrequency;
+    return Math.round(startFrequency);
   }
 
   const interpolatedExponent =
     Math.log10(startFrequency) +
     (Math.log10(endFrequency) - Math.log10(startFrequency)) * normalizedProgress;
 
-  return clamp(10 ** interpolatedExponent, MIN_FREQUENCY, MAX_FREQUENCY);
+  return Math.round(clamp(10 ** interpolatedExponent, MIN_FREQUENCY, MAX_FREQUENCY));
 }
 
 function getSweepProgressDelta(elapsedSeconds) {
@@ -208,7 +181,7 @@ function getChannelGains(channel) {
 }
 
 function updateFrequencyUI() {
-  elements.frequencyInput.value = String(Number(state.frequency.toFixed(2)));
+  elements.frequencyInput.value = String(Math.round(state.frequency));
   elements.frequencySlider.value = String(frequencyToSliderValue(state.frequency));
 }
 
@@ -493,7 +466,7 @@ function applyFrequencyToAudio(nextFrequency) {
 }
 
 function setFrequency(nextFrequency) {
-  state.frequency = clamp(nextFrequency, MIN_FREQUENCY, MAX_FREQUENCY);
+  state.frequency = Math.round(clamp(nextFrequency, MIN_FREQUENCY, MAX_FREQUENCY));
   updateFrequencyUI();
   applyFrequencyToAudio(state.frequency);
 }
@@ -801,7 +774,7 @@ function bindEvents() {
   });
 
   elements.frequencyInput.addEventListener("blur", () => {
-    elements.frequencyInput.value = String(Number(state.frequency.toFixed(2)));
+    elements.frequencyInput.value = String(Math.round(state.frequency));
   });
 
   elements.frequencySlider.addEventListener("change", () => {
