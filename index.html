@@ -109,7 +109,7 @@
       <section id="frequencyPanel" class="panel">
         <div class="panel-head">
           <h2>Frequency</h2>
-          <span class="panel-note">1-22000 Hz</span>
+          <span class="panel-note">20-22000 Hz</span>
         </div>
 
         <div class="frequency-grid">
@@ -122,7 +122,7 @@
               <input
                 id="frequencyInput"
                 type="number"
-                min="1"
+                min="20"
                 max="22000"
                 step="1"
                 inputmode="decimal"
@@ -166,61 +166,11 @@
           <span class="panel-note">log</span>
         </div>
 
-        <div class="control-grid compact-grid sweep-grid">
-          <label class="field">
-            <span>Start</span>
-            <input
-              id="sweepStartInput"
-              type="number"
-              min="1"
-              max="22000"
-              step="1"
-              inputmode="decimal"
-              value="20"
-            />
-          </label>
-
-          <label class="field">
-            <span>End</span>
-            <input
-              id="sweepEndInput"
-              type="number"
-              min="1"
-              max="22000"
-              step="1"
-              inputmode="decimal"
-              value="1000"
-            />
-          </label>
-
-          <label class="field">
-            <span>Speed</span>
-            <input
-              id="sweepSpeedInput"
-              type="number"
-              min="0.1"
-              max="50000"
-              step="0.1"
-              inputmode="decimal"
-              value="100"
-            />
-          </label>
-
-          <label class="field">
-            <span>Mode</span>
-            <select id="sweepDirectionSelect">
-              <option value="up">up</option>
-              <option value="down">down</option>
-              <option value="ping-pong">ping-pong</option>
-            </select>
-          </label>
-        </div>
-
         <div class="sweep-visual-grid">
           <label class="field">
             <div class="field-inline">
-              <span>Speed Curve</span>
-              <output id="sweepSpeedValue" for="sweepSpeedSlider">100</output>
+              <span>Speed</span>
+              <output id="sweepSpeedValue" for="sweepSpeedSlider">100 Hz/s</output>
             </div>
             <input
               id="sweepSpeedSlider"
@@ -234,8 +184,13 @@
 
           <div class="field sweep-range-field">
             <div class="field-inline">
-              <span>Range</span>
-              <output id="sweepRangeValue" for="sweepStartSlider sweepEndSlider">20 → 1000 Hz</output>
+              <span>Start</span>
+              <output id="sweepStartValue" for="sweepStartSlider">20 Hz</output>
+            </div>
+
+            <div class="field-inline">
+              <span>End</span>
+              <output id="sweepEndValue" for="sweepEndSlider">1000 Hz</output>
             </div>
 
             <div class="dual-range">
@@ -259,6 +214,10 @@
                 value="638"
               />
             </div>
+
+            <output id="sweepRangeValue" class="range-summary" for="sweepStartSlider sweepEndSlider">
+              20 → 1000 Hz
+            </output>
           </div>
         </div>
 

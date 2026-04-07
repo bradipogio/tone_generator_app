@@ -1,4 +1,4 @@
-const MIN_FREQUENCY = 1;
+const MIN_FREQUENCY = 20;
 const MAX_FREQUENCY = 22000;
 const DEFAULT_FREQUENCY = 440;
 const DEFAULT_VOLUME = 0.1;
@@ -62,16 +62,14 @@ const elements = {
   volumeValue: document.getElementById("volumeValue"),
   decreaseButton: document.getElementById("decreaseButton"),
   increaseButton: document.getElementById("increaseButton"),
-  sweepStartInput: document.getElementById("sweepStartInput"),
-  sweepEndInput: document.getElementById("sweepEndInput"),
-  sweepSpeedInput: document.getElementById("sweepSpeedInput"),
   sweepSpeedSlider: document.getElementById("sweepSpeedSlider"),
   sweepSpeedValue: document.getElementById("sweepSpeedValue"),
-  sweepDirectionSelect: document.getElementById("sweepDirectionSelect"),
   sweepStartSlider: document.getElementById("sweepStartSlider"),
   sweepEndSlider: document.getElementById("sweepEndSlider"),
   sweepRangeFill: document.getElementById("sweepRangeFill"),
   sweepRangeValue: document.getElementById("sweepRangeValue"),
+  sweepStartValue: document.getElementById("sweepStartValue"),
+  sweepEndValue: document.getElementById("sweepEndValue"),
   startSweepButton: document.getElementById("startSweepButton"),
   stopSweepButton: document.getElementById("stopSweepButton"),
   holdButton: document.getElementById("holdButton"),
@@ -235,15 +233,12 @@ function updateVolumeUI() {
 }
 
 function updateSweepUI() {
-  elements.sweepStartInput.value = String(Number(state.sweep.start.toFixed(2)));
-  elements.sweepEndInput.value = String(Number(state.sweep.end.toFixed(2)));
-  elements.sweepSpeedInput.value = String(Number(state.sweep.speed.toFixed(2)));
   elements.sweepSpeedSlider.value = String(sweepSpeedToSliderValue(state.sweep.speed));
-  elements.sweepSpeedValue.textContent = formatSpeed(state.sweep.speed);
-  elements.sweepDirectionSelect.value = state.sweep.direction;
+  elements.sweepSpeedValue.textContent = `${formatSpeed(state.sweep.speed)} Hz/s`;
   elements.sweepStartSlider.value = String(frequencyToSliderValue(state.sweep.start));
   elements.sweepEndSlider.value = String(frequencyToSliderValue(state.sweep.end));
-
+  elements.sweepStartValue.textContent = `${formatFrequency(state.sweep.start)} Hz`;
+  elements.sweepEndValue.textContent = `${formatFrequency(state.sweep.end)} Hz`;
   const startSliderValue = Number(elements.sweepStartSlider.value);
   const endSliderValue = Number(elements.sweepEndSlider.value);
   const left = (Math.min(startSliderValue, endSliderValue) / FREQUENCY_SLIDER_MAX) * 100;
@@ -278,13 +273,9 @@ function updateModeUI() {
     elements.frequencySlider,
     elements.decreaseButton,
     elements.increaseButton,
-    elements.sweepStartInput,
-    elements.sweepEndInput,
-    elements.sweepSpeedInput,
     elements.sweepSpeedSlider,
     elements.sweepStartSlider,
     elements.sweepEndSlider,
-    elements.sweepDirectionSelect,
   ].forEach((element) => {
     element.disabled = disabled;
   });
@@ -630,19 +621,12 @@ function advanceSweep(timestamp) {
   sweepState.frameId = window.requestAnimationFrame(advanceSweep);
 }
 
-function syncSweepFromInputs() {
-  state.sweep.start = parseFrequency(elements.sweepStartInput.value, state.sweep.start);
-  state.sweep.end = parseFrequency(elements.sweepEndInput.value, state.sweep.end);
-  state.sweep.speed = parseSweepSpeed(elements.sweepSpeedInput.value, state.sweep.speed);
-  state.sweep.direction = elements.sweepDirectionSelect.value;
-  state.sweep.min = Math.min(state.sweep.start, state.sweep.end);
-  state.sweep.max = Math.max(state.sweep.start, state.sweep.end);
-  updateSweepUI();
-}
-
 function syncSweepFromSliders() {
-  state.sweep.start = sliderValueToFrequency(Number(elements.sweepStartSlider.value));
-  state.sweep.end = sliderValueToFrequency(Number(elements.sweepEndSlider.value));
+  const startSliderValue = Number(elements.sweepStartSlider.value);
+  const endSliderValue = Number(elements.sweepEndSlider.value);
+
+  state.sweep.start = sliderValueToFrequency(startSliderValue);
+  state.sweep.end = sliderValueToFrequency(endSliderValue);
   state.sweep.min = Math.min(state.sweep.start, state.sweep.end);
   state.sweep.max = Math.max(state.sweep.start, state.sweep.end);
   updateSweepUI();
@@ -658,7 +642,6 @@ async function startSweep() {
     return;
   }
 
-  syncSweepFromInputs();
   stopSweep();
 
   if (state.sweep.direction === "up") {
@@ -826,18 +809,6 @@ function bindEvents() {
     elements.frequencyInput.value = String(Number(state.frequency.toFixed(2)));
   });
 
-  [elements.sweepStartInput, elements.sweepEndInput, elements.sweepSpeedInput].forEach((input) => {
-    input.addEventListener("change", () => {
-      stopSweep();
-      syncSweepFromInputs();
-    });
-
-    input.addEventListener("blur", () => {
-      stopSweep();
-      syncSweepFromInputs();
-    });
-  });
-
   elements.frequencySlider.addEventListener("change", () => {
     elements.frequencySlider.value = String(frequencyToSliderValue(state.frequency));
   });
@@ -849,17 +820,18 @@ function bindEvents() {
 
   elements.sweepStartSlider.addEventListener("input", () => {
     stopSweep();
+    if (Number(elements.sweepStartSlider.value) > Number(elements.sweepEndSlider.value)) {
+      elements.sweepStartSlider.value = elements.sweepEndSlider.value;
+    }
     syncSweepFromSliders();
   });
 
   elements.sweepEndSlider.addEventListener("input", () => {
     stopSweep();
+    if (Number(elements.sweepEndSlider.value) < Number(elements.sweepStartSlider.value)) {
+      elements.sweepEndSlider.value = elements.sweepStartSlider.value;
+    }
     syncSweepFromSliders();
-  });
-
-  elements.sweepDirectionSelect.addEventListener("change", () => {
-    stopSweep();
-    syncSweepFromInputs();
   });
 
   elements.startSweepButton.addEventListener("click", () => {

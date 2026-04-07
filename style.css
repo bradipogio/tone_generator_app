@@ -245,14 +245,6 @@ legend {
   grid-template-columns: 1fr;
 }
 
-.compact-grid {
-  gap: 8px;
-}
-
-.sweep-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
 .frequency-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 104px;
@@ -331,6 +323,10 @@ legend {
 
 .sweep-range-field {
   gap: 8px;
+}
+
+.range-summary {
+  color: var(--muted);
 }
 
 .btn {
@@ -615,9 +611,5 @@ input[type="range"]::-moz-range-thumb {
 
   .frequency-grid {
     grid-template-columns: minmax(0, 1fr) 126px;
-  }
-
-  .sweep-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
