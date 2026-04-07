@@ -684,13 +684,19 @@ input[type="range"]::-moz-range-thumb {
   width: 34px;
   height: 34px;
   margin-top: 2px;
-  border-width: 3px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  opacity: 0;
 }
 
 .volume-slider::-moz-range-thumb {
   width: 34px;
   height: 34px;
-  border-width: 3px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  opacity: 0;
 }
 
 .volume-icon {
