@@ -22,77 +22,6 @@
   <body>
     <main class="app-shell">
       <section class="panel panel-main">
-        <div class="hero-row">
-          <div class="display display-compact" aria-live="polite">
-            <span id="frequencyValue">440</span>
-            <span id="frequencyUnit" class="display-unit sr-only">Hz</span>
-          </div>
-          <button id="powerButton" class="btn btn-primary btn-power" type="button">Start</button>
-        </div>
-
-        <div class="control-grid">
-          <fieldset class="field">
-            <legend class="sr-only">Sorgente</legend>
-            <div class="wave-group" role="radiogroup" aria-label="Sorgente audio">
-              <label class="wave-option" title="Sine">
-                <input type="radio" name="waveform" value="sine" checked />
-                <span>
-                  <svg class="wave-icon" viewBox="0 0 64 32" aria-hidden="true">
-                    <path d="M2 17 C8 17 8 5 16 5 S24 29 32 29 S40 5 48 5 S56 17 62 17" />
-                  </svg>
-                </span>
-              </label>
-              <label class="wave-option" title="Square">
-                <input type="radio" name="waveform" value="square" />
-                <span>
-                  <svg class="wave-icon" viewBox="0 0 64 32" aria-hidden="true">
-                    <path d="M2 17 H14 V7 H30 V25 H46 V7 H62 V17" />
-                  </svg>
-                </span>
-              </label>
-              <label class="wave-option" title="Triangle">
-                <input type="radio" name="waveform" value="triangle" />
-                <span>
-                  <svg class="wave-icon" viewBox="0 0 64 32" aria-hidden="true">
-                    <path d="M2 17 L14 7 L30 29 L46 5 L58 17 L62 17" />
-                  </svg>
-                </span>
-              </label>
-              <label class="wave-option" title="Sawtooth">
-                <input type="radio" name="waveform" value="sawtooth" />
-                <span>
-                  <svg class="wave-icon" viewBox="0 0 64 32" aria-hidden="true">
-                    <path d="M2 12 L14 24 V4 L34 24 V4 L54 24 V12 H62" />
-                  </svg>
-                </span>
-              </label>
-              <label class="wave-option" title="Noise">
-                <input type="radio" name="waveform" value="noise" />
-                <span>
-                  <svg class="wave-icon" viewBox="0 0 64 32" aria-hidden="true">
-                    <path d="M2 17 L8 10 L14 21 L20 8 L26 24 L32 9 L38 22 L44 6 L50 19 L56 11 L62 17" />
-                  </svg>
-                </span>
-              </label>
-            </div>
-          </fieldset>
-
-          <label class="field">
-            <span>Volume</span>
-            <div class="range-row">
-              <input
-                id="volumeInput"
-                type="range"
-                min="0"
-                max="100"
-                step="1"
-                value="10"
-              />
-              <output id="volumeValue" for="volumeInput">10%</output>
-            </div>
-          </label>
-        </div>
-
         <fieldset class="field channel-field">
           <legend class="sr-only">Canale</legend>
           <div id="channelGroup" class="channel-group" role="radiogroup" aria-label="Canale di uscita">
@@ -110,33 +39,35 @@
             </label>
           </div>
         </fieldset>
-      </section>
 
-      <section id="frequencyPanel" class="panel">
-        <div class="frequency-grid">
-          <div class="stepper-row stepper-row-compact">
+        <div id="frequencyPanel" class="frequency-grid frequency-grid-main">
+          <div class="stepper-row stepper-row-main">
             <button id="decreaseButton" class="btn btn-step" type="button" aria-label="Diminuisci frequenza">
               -
             </button>
             <label class="field field-grow">
               <span class="sr-only">Frequenza</span>
-              <input
-                id="frequencyInput"
-                type="number"
-                min="20"
-                max="22000"
-                step="1"
-                inputmode="decimal"
-                value="440"
-              />
+              <div class="frequency-input-shell">
+                <input
+                  id="frequencyInput"
+                  class="frequency-input"
+                  type="number"
+                  min="20"
+                  max="22000"
+                  step="1"
+                  inputmode="decimal"
+                  value="440"
+                />
+                <span class="frequency-edit-unit">Hz</span>
+              </div>
             </label>
             <button id="increaseButton" class="btn btn-step" type="button" aria-label="Aumenta frequenza">
               +
             </button>
           </div>
 
-          <label class="field field-step">
-            <span>Step</span>
+          <label class="field field-step field-step-main">
+            <span class="sr-only">Step</span>
             <select id="stepSelect">
               <option value="1">1 Hz</option>
               <option value="5">5 Hz</option>
@@ -159,6 +90,72 @@
             value="662"
           />
         </label>
+
+        <fieldset class="field">
+          <legend class="sr-only">Sorgente</legend>
+          <div class="wave-group" role="radiogroup" aria-label="Sorgente audio">
+            <label class="wave-option" title="Sine">
+              <input type="radio" name="waveform" value="sine" checked />
+              <span>
+                <svg class="wave-icon" viewBox="0 0 64 32" aria-hidden="true">
+                  <path d="M2 17 C8 17 8 5 16 5 S24 29 32 29 S40 5 48 5 S56 17 62 17" />
+                </svg>
+              </span>
+            </label>
+            <label class="wave-option" title="Square">
+              <input type="radio" name="waveform" value="square" />
+              <span>
+                <svg class="wave-icon" viewBox="0 0 64 32" aria-hidden="true">
+                  <path d="M2 17 H14 V7 H30 V25 H46 V7 H62 V17" />
+                </svg>
+              </span>
+            </label>
+            <label class="wave-option" title="Triangle">
+              <input type="radio" name="waveform" value="triangle" />
+              <span>
+                <svg class="wave-icon" viewBox="0 0 64 32" aria-hidden="true">
+                  <path d="M2 17 L14 7 L30 29 L46 5 L58 17 L62 17" />
+                </svg>
+              </span>
+            </label>
+            <label class="wave-option" title="Sawtooth">
+              <input type="radio" name="waveform" value="sawtooth" />
+              <span>
+                <svg class="wave-icon" viewBox="0 0 64 32" aria-hidden="true">
+                  <path d="M2 12 L14 24 V4 L34 24 V4 L54 24 V12 H62" />
+                </svg>
+              </span>
+            </label>
+            <label class="wave-option" title="Noise">
+              <input type="radio" name="waveform" value="noise" />
+              <span>
+                <svg class="wave-icon" viewBox="0 0 64 32" aria-hidden="true">
+                  <path d="M2 17 L8 10 L14 21 L20 8 L26 24 L32 9 L38 22 L44 6 L50 19 L56 11 L62 17" />
+                </svg>
+              </span>
+            </label>
+          </div>
+        </fieldset>
+
+        <label class="field volume-field">
+          <span class="sr-only">Volume</span>
+          <div class="range-row volume-row">
+            <input
+              id="volumeInput"
+              class="volume-slider"
+              type="range"
+              min="0"
+              max="100"
+              step="1"
+              value="10"
+            />
+            <output id="volumeValue" for="volumeInput">10%</output>
+          </div>
+        </label>
+
+        <button id="powerButton" class="btn btn-primary btn-power btn-power-large" type="button" aria-label="Avvia o ferma audio">
+          <span id="powerIcon" class="power-icon" aria-hidden="true">▶</span>
+        </button>
       </section>
 
       <section id="sweepPanel" class="panel">
