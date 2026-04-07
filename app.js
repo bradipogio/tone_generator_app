@@ -52,12 +52,11 @@ const sweepState = {
 };
 
 const elements = {
-  frequencyValue: document.getElementById("frequencyValue"),
-  frequencyUnit: document.getElementById("frequencyUnit"),
   frequencyInput: document.getElementById("frequencyInput"),
   frequencySlider: document.getElementById("frequencySlider"),
   stepSelect: document.getElementById("stepSelect"),
   powerButton: document.getElementById("powerButton"),
+  powerIcon: document.getElementById("powerIcon"),
   volumeInput: document.getElementById("volumeInput"),
   volumeValue: document.getElementById("volumeValue"),
   decreaseButton: document.getElementById("decreaseButton"),
@@ -71,7 +70,6 @@ const elements = {
   startSweepButton: document.getElementById("startSweepButton"),
   stopSweepButton: document.getElementById("stopSweepButton"),
   holdButton: document.getElementById("holdButton"),
-  display: document.querySelector(".display"),
   frequencyPanel: document.getElementById("frequencyPanel"),
   sweepPanel: document.getElementById("sweepPanel"),
   waveformInputs: Array.from(document.querySelectorAll('input[name="waveform"]')),
@@ -210,16 +208,6 @@ function getChannelGains(channel) {
 }
 
 function updateFrequencyUI() {
-  if (isNoiseMode()) {
-    elements.frequencyValue.textContent = "NOISE";
-    elements.frequencyUnit.hidden = true;
-    elements.display.classList.add("is-noise");
-  } else {
-    elements.frequencyValue.textContent = formatFrequency(state.frequency);
-    elements.frequencyUnit.hidden = false;
-    elements.display.classList.remove("is-noise");
-  }
-
   elements.frequencyInput.value = String(Number(state.frequency.toFixed(2)));
   elements.frequencySlider.value = String(frequencyToSliderValue(state.frequency));
 }
@@ -290,8 +278,12 @@ function updateModeUI() {
 function updateButtonState() {
   const disabledForNoise = isNoiseMode();
 
-  elements.powerButton.textContent = state.isPlaying ? "Stop" : "Start";
   elements.powerButton.classList.toggle("is-on", state.isPlaying);
+  elements.powerButton.setAttribute(
+    "aria-label",
+    state.isPlaying ? "Ferma audio" : "Avvia audio",
+  );
+  elements.powerIcon.textContent = state.isPlaying ? "■" : "▶";
   elements.startSweepButton.disabled = disabledForNoise || state.isSweepActive;
   elements.stopSweepButton.disabled = disabledForNoise || !state.isSweepActive;
   elements.holdButton.disabled = disabledForNoise || !state.isSweepActive;
