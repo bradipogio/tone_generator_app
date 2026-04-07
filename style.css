@@ -9,10 +9,14 @@
   --secondary: #e07a5f;
   --secondary-strong: #c76850;
   --muted-btn: #dde3d8;
+  --active-surface: #dff2ec;
+  --active-border: #1a9b8a;
   --surface: rgba(242, 248, 245, 0.92);
   --shadow: 0 16px 32px rgba(23, 32, 28, 0.08);
   --radius: 20px;
   --radius-sm: 14px;
+  --dark-channel: #1f2326;
+  --right-channel: #d76457;
 }
 
 * {
@@ -233,6 +237,10 @@ legend {
   min-height: 44px;
 }
 
+.frequency-slider-field {
+  margin-top: 8px;
+}
+
 .btn {
   min-height: 46px;
   padding: 0 12px;
@@ -321,14 +329,70 @@ legend {
 }
 
 .wave-option span {
+  padding: 4px;
+  background: rgba(255, 251, 245, 0.96);
+}
+
+.wave-icon {
+  width: 100%;
+  height: 24px;
+  overflow: visible;
+}
+
+.wave-icon path {
+  fill: none;
+  stroke: #1f2421;
+  stroke-width: 3.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.wave-option input:checked + span {
+  border-color: var(--active-border);
+  background: var(--active-surface);
+  color: var(--primary-strong);
+  box-shadow: 0 0 0 2px rgba(26, 155, 138, 0.14);
+}
+
+.wave-option input:checked + span .wave-icon path {
+  stroke: var(--primary-strong);
+}
+
+.channel-option:not(.channel-stereo) span {
+  color: #fff;
+}
+
+.channel-option:first-child span {
+  background: var(--dark-channel);
+  border-color: rgba(31, 35, 38, 0.6);
+}
+
+.channel-stereo span {
+  background: rgba(255, 250, 242, 0.98);
+  color: var(--primary-strong);
   font-size: 1.15rem;
 }
 
-.channel-option input:checked + span,
-.wave-option input:checked + span {
+.channel-right span {
+  background: var(--right-channel);
+  border-color: rgba(215, 100, 87, 0.7);
+}
+
+.channel-option input:checked + span {
   border-color: transparent;
-  background: #1f2b27;
-  color: #f5f9f6;
+  transform: translateY(-1px);
+}
+
+.channel-option:first-child input:checked + span {
+  box-shadow: 0 0 0 2px rgba(31, 35, 38, 0.14), 0 10px 18px rgba(31, 35, 38, 0.12);
+}
+
+.channel-stereo input:checked + span {
+  box-shadow: 0 0 0 2px rgba(26, 155, 138, 0.14), 0 10px 18px rgba(13, 125, 111, 0.12);
+}
+
+.channel-right input:checked + span {
+  box-shadow: 0 0 0 2px rgba(215, 100, 87, 0.14), 0 10px 18px rgba(215, 100, 87, 0.12);
 }
 
 input[type="range"] {
@@ -352,6 +416,8 @@ input[type="range"]::-webkit-slider-thumb {
   margin-top: -7px;
   border-radius: 50%;
   background: var(--primary);
+  border: 2px solid #fff;
+  box-shadow: 0 4px 12px rgba(13, 125, 111, 0.18);
 }
 
 input[type="range"]::-moz-range-track {
@@ -363,9 +429,10 @@ input[type="range"]::-moz-range-track {
 input[type="range"]::-moz-range-thumb {
   width: 22px;
   height: 22px;
-  border: 0;
+  border: 2px solid #fff;
   border-radius: 50%;
   background: var(--primary);
+  box-shadow: 0 4px 12px rgba(13, 125, 111, 0.18);
 }
 
 @media (min-width: 640px) {

@@ -7,6 +7,9 @@ const PARAM_SMOOTHING = 0.01;
 const HOLD_DELAY_MS = 320;
 const HOLD_INTERVAL_MS = 90;
 const NOISE_BUFFER_SECONDS = 2;
+const FREQUENCY_SLIDER_MAX = 1000;
+const LOG_MIN_FREQUENCY = Math.log10(MIN_FREQUENCY);
+const LOG_MAX_FREQUENCY = Math.log10(MAX_FREQUENCY);
 
 const state = {
   frequency: DEFAULT_FREQUENCY,
@@ -49,6 +52,7 @@ const elements = {
   frequencyValue: document.getElementById("frequencyValue"),
   frequencyUnit: document.getElementById("frequencyUnit"),
   frequencyInput: document.getElementById("frequencyInput"),
+  frequencySlider: document.getElementById("frequencySlider"),
   stepSelect: document.getElementById("stepSelect"),
   startButton: document.getElementById("startButton"),
   stopButton: document.getElementById("stopButton"),
@@ -109,6 +113,20 @@ function formatFrequency(value) {
   return value.toFixed(2).replace(/\.?0+$/, "");
 }
 
+function sliderValueToFrequency(sliderValue) {
+  const normalizedValue = clamp(sliderValue, 0, FREQUENCY_SLIDER_MAX) / FREQUENCY_SLIDER_MAX;
+  const exponent = LOG_MIN_FREQUENCY + normalizedValue * (LOG_MAX_FREQUENCY - LOG_MIN_FREQUENCY);
+  return clamp(10 ** exponent, MIN_FREQUENCY, MAX_FREQUENCY);
+}
+
+function frequencyToSliderValue(frequency) {
+  const clampedFrequency = clamp(frequency, MIN_FREQUENCY, MAX_FREQUENCY);
+  const normalizedValue =
+    (Math.log10(clampedFrequency) - LOG_MIN_FREQUENCY) / (LOG_MAX_FREQUENCY - LOG_MIN_FREQUENCY);
+
+  return Math.round(normalizedValue * FREQUENCY_SLIDER_MAX);
+}
+
 function updateStatus(text) {
   elements.statusText.textContent = text;
 }
@@ -147,6 +165,7 @@ function updateFrequencyUI() {
   }
 
   elements.frequencyInput.value = String(Number(state.frequency.toFixed(2)));
+  elements.frequencySlider.value = String(frequencyToSliderValue(state.frequency));
 }
 
 function updateVolumeUI() {
@@ -180,6 +199,7 @@ function updateModeUI() {
   [
     elements.frequencyInput,
     elements.stepSelect,
+    elements.frequencySlider,
     elements.decreaseButton,
     elements.increaseButton,
     elements.sweepStartInput,
@@ -698,6 +718,10 @@ function bindEvents() {
     }
 
     applyManualFrequency(parseFrequency(event.target.value));
+  });
+
+  elements.frequencySlider.addEventListener("input", (event) => {
+    applyManualFrequency(sliderValueToFrequency(Number(event.target.value)));
   });
 
   elements.frequencyInput.addEventListener("blur", () => {

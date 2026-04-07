@@ -37,23 +37,43 @@
             <div class="wave-group" role="radiogroup" aria-label="Sorgente audio">
               <label class="wave-option" title="Sine">
                 <input type="radio" name="waveform" value="sine" checked />
-                <span>∿</span>
+                <span>
+                  <svg class="wave-icon" viewBox="0 0 64 32" aria-hidden="true">
+                    <path d="M2 17 C8 17 8 5 16 5 S24 29 32 29 S40 5 48 5 S56 17 62 17" />
+                  </svg>
+                </span>
               </label>
               <label class="wave-option" title="Square">
                 <input type="radio" name="waveform" value="square" />
-                <span>⊓</span>
+                <span>
+                  <svg class="wave-icon" viewBox="0 0 64 32" aria-hidden="true">
+                    <path d="M2 17 H14 V7 H30 V25 H46 V7 H62 V17" />
+                  </svg>
+                </span>
               </label>
               <label class="wave-option" title="Triangle">
                 <input type="radio" name="waveform" value="triangle" />
-                <span>△</span>
+                <span>
+                  <svg class="wave-icon" viewBox="0 0 64 32" aria-hidden="true">
+                    <path d="M2 17 L14 7 L30 29 L46 5 L58 17 L62 17" />
+                  </svg>
+                </span>
               </label>
               <label class="wave-option" title="Sawtooth">
                 <input type="radio" name="waveform" value="sawtooth" />
-                <span>⟋</span>
+                <span>
+                  <svg class="wave-icon" viewBox="0 0 64 32" aria-hidden="true">
+                    <path d="M2 12 L14 24 V4 L34 24 V4 L54 24 V12 H62" />
+                  </svg>
+                </span>
               </label>
               <label class="wave-option" title="Noise">
                 <input type="radio" name="waveform" value="noise" />
-                <span>≈</span>
+                <span>
+                  <svg class="wave-icon" viewBox="0 0 64 32" aria-hidden="true">
+                    <path d="M2 17 L8 10 L14 21 L20 8 L26 24 L32 9 L38 22 L44 6 L50 19 L56 11 L62 17" />
+                  </svg>
+                </span>
               </label>
             </div>
           </fieldset>
@@ -79,15 +99,15 @@
           <div id="channelGroup" class="channel-group" role="radiogroup" aria-label="Canale di uscita">
             <label class="channel-option">
               <input type="radio" name="channel" value="left" />
-              <span>◀</span>
+              <span>L</span>
             </label>
-            <label class="channel-option">
+            <label class="channel-option channel-stereo">
               <input type="radio" name="channel" value="stereo" checked />
-              <span>●</span>
+              <span>&infin;</span>
             </label>
-            <label class="channel-option">
+            <label class="channel-option channel-right">
               <input type="radio" name="channel" value="right" />
-              <span>▶</span>
+              <span>R</span>
             </label>
           </div>
         </fieldset>
@@ -133,6 +153,18 @@
             </select>
           </label>
         </div>
+
+        <label class="field frequency-slider-field">
+          <span>Slider</span>
+          <input
+            id="frequencySlider"
+            type="range"
+            min="0"
+            max="1000"
+            step="1"
+            value="662"
+          />
+        </label>
       </section>
 
       <section id="sweepPanel" class="panel">
