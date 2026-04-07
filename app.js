@@ -10,6 +10,8 @@ const NOISE_BUFFER_SECONDS = 2;
 const FREQUENCY_SLIDER_MAX = 1000;
 const MANUAL_FREQUENCY_STEP = 1;
 const PULL_TO_REFRESH_THRESHOLD = 110;
+const SCOPE_FPS = 30;
+const SCOPE_HEIGHT = 112;
 const PLAY_ICON_MARKUP =
   '<svg viewBox="0 0 32 32" focusable="false" aria-hidden="true"><path d="M11 8.5L23 16L11 23.5Z"/></svg>';
 const STOP_ICON_MARKUP =
@@ -40,6 +42,7 @@ const audio = {
   noiseBuffer: null,
   masterGainNode: null,
   mergerNode: null,
+  analyserNode: null,
   leftGainNode: null,
   rightGainNode: null,
   stopTimeoutId: null,
@@ -56,6 +59,12 @@ const refreshGesture = {
   active: false,
   startX: 0,
   startY: 0,
+};
+
+const scopeState = {
+  frameId: null,
+  lastDrawTimestamp: 0,
+  buffer: null,
 };
 
 const elements = {
@@ -78,6 +87,7 @@ const elements = {
   waveformInputs: Array.from(document.querySelectorAll('input[name="waveform"]')),
   channelInputs: Array.from(document.querySelectorAll('input[name="channel"]')),
   sweepDurationInputs: Array.from(document.querySelectorAll('input[name="sweepDuration"]')),
+  waveformScope: document.getElementById("waveformScope"),
 };
 
 function clamp(value, min, max) {
@@ -148,6 +158,123 @@ function getSweepProgressDelta(elapsedSeconds) {
 
 function updateStatus(text) {
   void text;
+}
+
+function getScopeContext() {
+  return elements.waveformScope.getContext("2d");
+}
+
+function resizeScopeCanvas() {
+  const canvas = elements.waveformScope;
+  const dpr = window.devicePixelRatio || 1;
+  const width = Math.max(Math.round(canvas.clientWidth * dpr), 1);
+  const height = Math.max(Math.round(SCOPE_HEIGHT * dpr), 1);
+
+  if (canvas.width === width && canvas.height === height) {
+    return;
+  }
+
+  canvas.width = width;
+  canvas.height = height;
+}
+
+function clearScope() {
+  resizeScopeCanvas();
+  const canvas = elements.waveformScope;
+  const context = getScopeContext();
+  context.clearRect(0, 0, canvas.width, canvas.height);
+}
+
+function getScopeSliceLength() {
+  if (!audio.context || isNoiseMode()) {
+    return scopeState.buffer ? scopeState.buffer.length : 0;
+  }
+
+  const cyclesToShow = 1.8;
+  const samplesPerCycle = audio.context.sampleRate / Math.max(state.frequency, MIN_FREQUENCY);
+  const desiredLength = Math.round(samplesPerCycle * cyclesToShow);
+
+  return clamp(desiredLength, 180, scopeState.buffer.length);
+}
+
+function findRisingZeroCrossing(buffer, maxIndex) {
+  for (let index = 1; index < maxIndex; index += 1) {
+    if (buffer[index - 1] <= 0 && buffer[index] > 0) {
+      return index;
+    }
+  }
+
+  return 0;
+}
+
+function drawScope(timestamp = 0) {
+  if (!audio.analyserNode || !scopeState.buffer) {
+    clearScope();
+    scopeState.frameId = null;
+    return;
+  }
+
+  scopeState.frameId = window.requestAnimationFrame(drawScope);
+
+  if (timestamp - scopeState.lastDrawTimestamp < 1000 / SCOPE_FPS) {
+    return;
+  }
+
+  scopeState.lastDrawTimestamp = timestamp;
+  resizeScopeCanvas();
+
+  const canvas = elements.waveformScope;
+  const context = getScopeContext();
+  const width = canvas.width;
+  const height = canvas.height;
+  const centerY = height * 0.5;
+
+  context.clearRect(0, 0, width, height);
+
+  if (!state.isPlaying) {
+    return;
+  }
+
+  audio.analyserNode.getFloatTimeDomainData(scopeState.buffer);
+
+  let startIndex = 0;
+  let sliceLength = scopeState.buffer.length;
+
+  if (!isNoiseMode()) {
+    sliceLength = getScopeSliceLength();
+    const searchLimit = Math.max(scopeState.buffer.length - sliceLength, 1);
+    startIndex = findRisingZeroCrossing(scopeState.buffer, searchLimit);
+  }
+
+  const usableLength = Math.max(Math.min(sliceLength, scopeState.buffer.length - startIndex), 2);
+
+  context.beginPath();
+  context.lineWidth = Math.max(1.5, (window.devicePixelRatio || 1) * 1.15);
+  context.strokeStyle = "#ffd54f";
+
+  for (let point = 0; point < usableLength; point += 1) {
+    const bufferIndex = startIndex + point;
+    const sample = clamp(scopeState.buffer[bufferIndex], -1, 1);
+    const x = (point / (usableLength - 1)) * width;
+    const y = centerY + sample * (height * 0.32);
+
+    if (point === 0) {
+      context.moveTo(x, y);
+    } else {
+      context.lineTo(x, y);
+    }
+  }
+
+  context.stroke();
+}
+
+function startScope() {
+  if (scopeState.frameId) {
+    return;
+  }
+
+  scopeState.lastDrawTimestamp = 0;
+  scopeState.frameId = window.requestAnimationFrame(drawScope);
 }
 
 function setAudioParamSmoothly(audioParam, value, timeConstant = PARAM_SMOOTHING) {
@@ -279,18 +406,24 @@ function ensureAudioGraph() {
   audio.leftGainNode = audio.context.createGain();
   audio.rightGainNode = audio.context.createGain();
   audio.mergerNode = audio.context.createChannelMerger(2);
+  audio.analyserNode = audio.context.createAnalyser();
 
   audio.masterGainNode.gain.value = 0;
   audio.leftGainNode.gain.value = 1;
   audio.rightGainNode.gain.value = 1;
+  audio.analyserNode.fftSize = 8192;
+  audio.analyserNode.smoothingTimeConstant = 0.08;
+  scopeState.buffer = new Float32Array(audio.analyserNode.fftSize);
 
   audio.masterGainNode.connect(audio.leftGainNode);
   audio.masterGainNode.connect(audio.rightGainNode);
   audio.leftGainNode.connect(audio.mergerNode, 0, 0);
   audio.rightGainNode.connect(audio.mergerNode, 0, 1);
-  audio.mergerNode.connect(audio.context.destination);
+  audio.mergerNode.connect(audio.analyserNode);
+  audio.analyserNode.connect(audio.context.destination);
 
   applyChannelRouting();
+  startScope();
 }
 
 function ensureNoiseBuffer() {
@@ -705,6 +838,12 @@ function bindPullToRefresh() {
   );
 }
 
+function bindScopeResize() {
+  resizeScopeCanvas();
+  clearScope();
+  window.addEventListener("resize", resizeScopeCanvas, { passive: true });
+}
+
 function bindPressAndHold(button, direction) {
   let holdTimeoutId = null;
   let repeatIntervalId = null;
@@ -851,6 +990,7 @@ function init() {
   syncAllUI();
   updateStatus("Pronto");
   bindAudioUnlock();
+  bindScopeResize();
   bindPullToRefresh();
   bindEvents();
 }

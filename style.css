@@ -293,6 +293,17 @@ legend {
   border-top: 1px solid rgba(255, 213, 79, 0.14);
 }
 
+.scope-panel {
+  margin-top: 14px;
+  min-height: 112px;
+}
+
+.waveform-scope {
+  display: block;
+  width: 100%;
+  height: 112px;
+}
+
 .sweep-range-field {
   gap: 8px;
 }
