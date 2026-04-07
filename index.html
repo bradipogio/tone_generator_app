@@ -21,7 +21,7 @@
           <p id="statusText" class="status">Pronto</p>
         </div>
 
-        <div class="display" aria-live="polite">
+        <div class="display display-compact" aria-live="polite">
           <span id="frequencyValue">440</span>
           <span id="frequencyUnit" class="display-unit">Hz</span>
         </div>
@@ -32,16 +32,31 @@
         </div>
 
         <div class="control-grid">
-          <label class="field">
-            <span>Sorgente</span>
-            <select id="waveformSelect">
-              <option value="sine">sine</option>
-              <option value="square">square</option>
-              <option value="triangle">triangle</option>
-              <option value="sawtooth">sawtooth</option>
-              <option value="noise">noise</option>
-            </select>
-          </label>
+          <fieldset class="field">
+            <legend>Sorgente</legend>
+            <div class="wave-group" role="radiogroup" aria-label="Sorgente audio">
+              <label class="wave-option" title="Sine">
+                <input type="radio" name="waveform" value="sine" checked />
+                <span>∿</span>
+              </label>
+              <label class="wave-option" title="Square">
+                <input type="radio" name="waveform" value="square" />
+                <span>⊓</span>
+              </label>
+              <label class="wave-option" title="Triangle">
+                <input type="radio" name="waveform" value="triangle" />
+                <span>△</span>
+              </label>
+              <label class="wave-option" title="Sawtooth">
+                <input type="radio" name="waveform" value="sawtooth" />
+                <span>⟋</span>
+              </label>
+              <label class="wave-option" title="Noise">
+                <input type="radio" name="waveform" value="noise" />
+                <span>≈</span>
+              </label>
+            </div>
+          </fieldset>
 
           <label class="field">
             <span>Volume</span>
@@ -84,38 +99,40 @@
           <span class="panel-note">1-22000 Hz</span>
         </div>
 
-        <div class="stepper-row">
-          <button id="decreaseButton" class="btn btn-step" type="button" aria-label="Diminuisci frequenza">
-            -
-          </button>
-          <label class="field field-grow">
-            <span>Hz</span>
-            <input
-              id="frequencyInput"
-              type="number"
-              min="1"
-              max="22000"
-              step="1"
-              inputmode="decimal"
-              value="440"
-            />
-          </label>
-          <button id="increaseButton" class="btn btn-step" type="button" aria-label="Aumenta frequenza">
-            +
-          </button>
-        </div>
+        <div class="frequency-grid">
+          <div class="stepper-row stepper-row-compact">
+            <button id="decreaseButton" class="btn btn-step" type="button" aria-label="Diminuisci frequenza">
+              -
+            </button>
+            <label class="field field-grow">
+              <span>Hz</span>
+              <input
+                id="frequencyInput"
+                type="number"
+                min="1"
+                max="22000"
+                step="1"
+                inputmode="decimal"
+                value="440"
+              />
+            </label>
+            <button id="increaseButton" class="btn btn-step" type="button" aria-label="Aumenta frequenza">
+              +
+            </button>
+          </div>
 
-        <label class="field">
-          <span>Step</span>
-          <select id="stepSelect">
-            <option value="1">1 Hz</option>
-            <option value="5">5 Hz</option>
-            <option value="10" selected>10 Hz</option>
-            <option value="50">50 Hz</option>
-            <option value="100">100 Hz</option>
-            <option value="1000">1000 Hz</option>
-          </select>
-        </label>
+          <label class="field field-step">
+            <span>Step</span>
+            <select id="stepSelect">
+              <option value="1">1 Hz</option>
+              <option value="5">5 Hz</option>
+              <option value="10" selected>10 Hz</option>
+              <option value="50">50 Hz</option>
+              <option value="100">100 Hz</option>
+              <option value="1000">1000 Hz</option>
+            </select>
+          </label>
+        </div>
       </section>
 
       <section id="sweepPanel" class="panel">
@@ -124,7 +141,7 @@
           <span class="panel-note">Hz/s</span>
         </div>
 
-        <div class="control-grid compact-grid">
+        <div class="control-grid compact-grid sweep-grid">
           <label class="field">
             <span>Start</span>
             <input

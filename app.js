@@ -52,7 +52,6 @@ const elements = {
   stepSelect: document.getElementById("stepSelect"),
   startButton: document.getElementById("startButton"),
   stopButton: document.getElementById("stopButton"),
-  waveformSelect: document.getElementById("waveformSelect"),
   volumeInput: document.getElementById("volumeInput"),
   volumeValue: document.getElementById("volumeValue"),
   decreaseButton: document.getElementById("decreaseButton"),
@@ -68,6 +67,7 @@ const elements = {
   display: document.querySelector(".display"),
   frequencyPanel: document.getElementById("frequencyPanel"),
   sweepPanel: document.getElementById("sweepPanel"),
+  waveformInputs: Array.from(document.querySelectorAll('input[name="waveform"]')),
   channelInputs: Array.from(document.querySelectorAll('input[name="channel"]')),
 };
 
@@ -162,6 +162,12 @@ function updateSweepUI() {
   elements.sweepDirectionSelect.value = state.sweep.direction;
 }
 
+function updateWaveformUI() {
+  elements.waveformInputs.forEach((input) => {
+    input.checked = input.value === state.waveform;
+  });
+}
+
 function updateChannelUI() {
   elements.channelInputs.forEach((input) => {
     input.checked = input.value === state.channel;
@@ -202,6 +208,7 @@ function syncAllUI() {
   updateFrequencyUI();
   updateVolumeUI();
   updateSweepUI();
+  updateWaveformUI();
   updateChannelUI();
   updateModeUI();
   updateButtonState();
@@ -437,6 +444,7 @@ function setWaveform(nextWaveform) {
   }
 
   updateFrequencyUI();
+  updateWaveformUI();
   updateModeUI();
   updateButtonState();
 
@@ -660,8 +668,12 @@ function bindEvents() {
     stopTone();
   });
 
-  elements.waveformSelect.addEventListener("change", (event) => {
-    setWaveform(event.target.value);
+  elements.waveformInputs.forEach((input) => {
+    input.addEventListener("change", (event) => {
+      if (event.target.checked) {
+        setWaveform(event.target.value);
+      }
+    });
   });
 
   elements.volumeInput.addEventListener("input", (event) => {

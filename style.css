@@ -128,21 +128,27 @@ legend {
   background: var(--surface);
 }
 
+.display-compact {
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+}
+
 #frequencyValue {
-  font-size: clamp(2.4rem, 12vw, 4.4rem);
+  font-size: clamp(1.75rem, 9vw, 2.8rem);
   font-weight: 800;
-  line-height: 0.9;
+  line-height: 0.95;
   letter-spacing: -0.05em;
 }
 
 .display-unit {
   color: var(--muted);
-  font-size: 0.95rem;
+  font-size: 0.8rem;
   font-weight: 700;
 }
 
 .display.is-noise #frequencyValue {
-  font-size: clamp(2rem, 10vw, 3.2rem);
+  font-size: clamp(1.5rem, 8vw, 2.2rem);
   letter-spacing: -0.02em;
 }
 
@@ -150,7 +156,8 @@ legend {
 .control-grid,
 .stepper-row,
 .range-row,
-.channel-group {
+.channel-group,
+.wave-group {
   display: grid;
   gap: 10px;
 }
@@ -171,10 +178,27 @@ legend {
   gap: 8px;
 }
 
+.sweep-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.frequency-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 96px;
+  gap: 8px;
+  align-items: end;
+}
+
 .stepper-row {
   grid-template-columns: 52px minmax(0, 1fr) 52px;
   align-items: end;
   margin-bottom: 10px;
+}
+
+.stepper-row-compact {
+  margin-bottom: 0;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  gap: 8px;
 }
 
 .range-row {
@@ -203,6 +227,10 @@ legend {
 
 .field-grow {
   min-width: 0;
+}
+
+.field-step select {
+  min-height: 44px;
 }
 
 .btn {
@@ -252,7 +280,8 @@ legend {
 
 .btn-step {
   padding: 0;
-  font-size: 1.5rem;
+  min-height: 44px;
+  font-size: 1.3rem;
   background: #1f2b27;
   color: #f5f9f6;
 }
@@ -261,18 +290,21 @@ legend {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-.channel-option {
+.channel-option,
+.wave-option {
   position: relative;
 }
 
-.channel-option input {
+.channel-option input,
+.wave-option input {
   position: absolute;
   inset: 0;
   opacity: 0;
   pointer-events: none;
 }
 
-.channel-option span {
+.channel-option span,
+.wave-option span {
   display: grid;
   place-items: center;
   min-height: 44px;
@@ -284,7 +316,16 @@ legend {
   font-weight: 800;
 }
 
-.channel-option input:checked + span {
+.wave-group {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.wave-option span {
+  font-size: 1.15rem;
+}
+
+.channel-option input:checked + span,
+.wave-option input:checked + span {
   border-color: transparent;
   background: #1f2b27;
   color: #f5f9f6;
@@ -330,5 +371,13 @@ input[type="range"]::-moz-range-thumb {
 @media (min-width: 640px) {
   .control-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .frequency-grid {
+    grid-template-columns: minmax(0, 1fr) 120px;
+  }
+
+  .sweep-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
