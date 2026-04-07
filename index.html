@@ -149,7 +149,13 @@
               step="1"
               value="10"
             />
-            <output id="volumeValue" for="volumeInput">10%</output>
+            <span class="volume-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" focusable="false">
+                <path d="M4 14h3.4L12 18V6L7.4 10H4z" />
+                <path d="M15 9.2a4.8 4.8 0 0 1 0 5.6" />
+                <path d="M17.8 6.8a8.2 8.2 0 0 1 0 10.4" />
+              </svg>
+            </span>
           </div>
         </label>
 
@@ -160,18 +166,6 @@
 
       <section id="sweepPanel" class="panel panel-sweep">
         <div class="sweep-visual-grid">
-          <label class="field">
-            <span class="sr-only">Speed</span>
-            <input
-              id="sweepSpeedSlider"
-              type="range"
-              min="0"
-              max="1000"
-              step="1"
-              value="638"
-            />
-          </label>
-
           <div class="field sweep-range-field">
             <div class="dual-range">
               <div id="sweepStartBadge" class="range-badge range-badge-start">20</div>
@@ -197,12 +191,29 @@
               />
             </div>
           </div>
+
+          <fieldset class="field sweep-duration-field">
+            <legend class="sr-only">Durata sweep</legend>
+            <div class="sweep-duration-group" role="radiogroup" aria-label="Durata sweep in secondi">
+              <label class="sweep-duration-option">
+                <input type="radio" name="sweepDuration" value="5" />
+                <span>5</span>
+              </label>
+              <label class="sweep-duration-option">
+                <input type="radio" name="sweepDuration" value="15" checked />
+                <span>15</span>
+              </label>
+              <label class="sweep-duration-option">
+                <input type="radio" name="sweepDuration" value="30" />
+                <span>30</span>
+              </label>
+            </div>
+          </fieldset>
         </div>
 
-        <div class="button-row button-row-triple">
+        <div class="button-row button-row-sweep">
           <button id="startSweepButton" class="btn btn-primary" type="button">Sweep</button>
           <button id="stopSweepButton" class="btn btn-secondary" type="button">Stop</button>
-          <button id="holdButton" class="btn btn-muted" type="button">Hold</button>
         </div>
       </section>
     </main>

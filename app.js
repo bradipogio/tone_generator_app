@@ -8,10 +8,6 @@ const HOLD_DELAY_MS = 320;
 const HOLD_INTERVAL_MS = 90;
 const NOISE_BUFFER_SECONDS = 2;
 const FREQUENCY_SLIDER_MAX = 1000;
-const SWEEP_SPEED_MIN = 0.1;
-const SWEEP_SPEED_MAX = 50000;
-const SWEEP_SPEED_SLIDER_MAX = 1000;
-const LOG_SWEEP_RATE_MULTIPLIER = 0.2;
 
 const state = {
   frequency: DEFAULT_FREQUENCY,
@@ -24,7 +20,7 @@ const state = {
   sweep: {
     start: 20,
     end: 1000,
-    speed: 100,
+    duration: 15,
     direction: "up",
     min: 20,
     max: 1000,
@@ -58,10 +54,8 @@ const elements = {
   powerButton: document.getElementById("powerButton"),
   powerIcon: document.getElementById("powerIcon"),
   volumeInput: document.getElementById("volumeInput"),
-  volumeValue: document.getElementById("volumeValue"),
   decreaseButton: document.getElementById("decreaseButton"),
   increaseButton: document.getElementById("increaseButton"),
-  sweepSpeedSlider: document.getElementById("sweepSpeedSlider"),
   sweepStartSlider: document.getElementById("sweepStartSlider"),
   sweepEndSlider: document.getElementById("sweepEndSlider"),
   sweepStartBadge: document.getElementById("sweepStartBadge"),
@@ -69,11 +63,11 @@ const elements = {
   sweepRangeFill: document.getElementById("sweepRangeFill"),
   startSweepButton: document.getElementById("startSweepButton"),
   stopSweepButton: document.getElementById("stopSweepButton"),
-  holdButton: document.getElementById("holdButton"),
   frequencyPanel: document.getElementById("frequencyPanel"),
   sweepPanel: document.getElementById("sweepPanel"),
   waveformInputs: Array.from(document.querySelectorAll('input[name="waveform"]')),
   channelInputs: Array.from(document.querySelectorAll('input[name="channel"]')),
+  sweepDurationInputs: Array.from(document.querySelectorAll('input[name="sweepDuration"]')),
 };
 
 function clamp(value, min, max) {
@@ -124,14 +118,6 @@ function frequencyToSliderValue(frequency) {
   return logValueToSliderValue(frequency, MIN_FREQUENCY, MAX_FREQUENCY, FREQUENCY_SLIDER_MAX);
 }
 
-function sliderValueToSweepSpeed(sliderValue) {
-  return sliderValueToLogValue(sliderValue, SWEEP_SPEED_MIN, SWEEP_SPEED_MAX, SWEEP_SPEED_SLIDER_MAX);
-}
-
-function sweepSpeedToSliderValue(speedValue) {
-  return logValueToSliderValue(speedValue, SWEEP_SPEED_MIN, SWEEP_SPEED_MAX, SWEEP_SPEED_SLIDER_MAX);
-}
-
 function interpolateLogFrequency(startFrequency, endFrequency, progress) {
   const normalizedProgress = clamp(progress, 0, 1);
 
@@ -147,11 +133,7 @@ function interpolateLogFrequency(startFrequency, endFrequency, progress) {
 }
 
 function getSweepProgressDelta(elapsedSeconds) {
-  const logSpan = Math.abs(Math.log10(state.sweep.end) - Math.log10(state.sweep.start));
-  const safeLogSpan = Math.max(logSpan, 0.0001);
-  const speedFactor = Math.log10(state.sweep.speed + 1);
-
-  return (speedFactor * LOG_SWEEP_RATE_MULTIPLIER * elapsedSeconds) / safeLogSpan;
+  return elapsedSeconds / Math.max(state.sweep.duration, 0.1);
 }
 
 function updateStatus(text) {
@@ -188,11 +170,9 @@ function updateFrequencyUI() {
 function updateVolumeUI() {
   const volumePercentage = Math.round(state.volume * 100);
   elements.volumeInput.value = String(volumePercentage);
-  elements.volumeValue.textContent = `${volumePercentage}%`;
 }
 
 function updateSweepUI() {
-  elements.sweepSpeedSlider.value = String(sweepSpeedToSliderValue(state.sweep.speed));
   elements.sweepStartSlider.value = String(frequencyToSliderValue(state.sweep.start));
   elements.sweepEndSlider.value = String(frequencyToSliderValue(state.sweep.end));
 
@@ -216,6 +196,12 @@ function updateSweepUI() {
   elements.sweepEndBadge.classList.toggle("is-overlap", isOverlap);
 }
 
+function updateSweepDurationUI() {
+  elements.sweepDurationInputs.forEach((input) => {
+    input.checked = Number(input.value) === state.sweep.duration;
+  });
+}
+
 function updateWaveformUI() {
   elements.waveformInputs.forEach((input) => {
     input.checked = input.value === state.waveform;
@@ -237,9 +223,9 @@ function updateModeUI() {
     elements.frequencySlider,
     elements.decreaseButton,
     elements.increaseButton,
-    elements.sweepSpeedSlider,
     elements.sweepStartSlider,
     elements.sweepEndSlider,
+    ...elements.sweepDurationInputs,
   ].forEach((element) => {
     element.disabled = disabled;
   });
@@ -259,13 +245,13 @@ function updateButtonState() {
   elements.powerIcon.textContent = state.isPlaying ? "■" : "▶";
   elements.startSweepButton.disabled = disabledForNoise || state.isSweepActive;
   elements.stopSweepButton.disabled = disabledForNoise || !state.isSweepActive;
-  elements.holdButton.disabled = disabledForNoise || !state.isSweepActive;
 }
 
 function syncAllUI() {
   updateFrequencyUI();
   updateVolumeUI();
   updateSweepUI();
+  updateSweepDurationUI();
   updateWaveformUI();
   updateChannelUI();
   updateModeUI();
@@ -600,9 +586,9 @@ function syncSweepFromSliders() {
   updateSweepUI();
 }
 
-function syncSweepSpeedFromSlider() {
-  state.sweep.speed = sliderValueToSweepSpeed(Number(elements.sweepSpeedSlider.value));
-  updateSweepUI();
+function setSweepDuration(nextDuration) {
+  state.sweep.duration = clamp(Number(nextDuration) || 15, 5, 30);
+  updateSweepDurationUI();
 }
 
 async function startSweep() {
@@ -637,7 +623,6 @@ async function startSweep() {
 
   if (state.sweep.min === state.sweep.max) {
     await startTone();
-    updateStatus(`Hold a ${formatFrequency(state.frequency)} Hz`);
     updateButtonState();
     return;
   }
@@ -648,15 +633,6 @@ async function startSweep() {
   updateStatus("Sweep attivo");
   updateButtonState();
   sweepState.frameId = window.requestAnimationFrame(advanceSweep);
-}
-
-function holdSweep() {
-  if (!state.isSweepActive) {
-    return;
-  }
-
-  stopSweep();
-  updateStatus(`Hold a ${formatFrequency(state.frequency)} Hz`);
 }
 
 function applyManualFrequency(nextFrequency) {
@@ -781,11 +757,6 @@ function bindEvents() {
     elements.frequencySlider.value = String(frequencyToSliderValue(state.frequency));
   });
 
-  elements.sweepSpeedSlider.addEventListener("input", () => {
-    stopSweep();
-    syncSweepSpeedFromSlider();
-  });
-
   elements.sweepStartSlider.addEventListener("input", () => {
     stopSweep();
     if (Number(elements.sweepStartSlider.value) > Number(elements.sweepEndSlider.value)) {
@@ -810,8 +781,13 @@ function bindEvents() {
     stopSweep();
   });
 
-  elements.holdButton.addEventListener("click", () => {
-    holdSweep();
+  elements.sweepDurationInputs.forEach((input) => {
+    input.addEventListener("change", (event) => {
+      if (event.target.checked) {
+        stopSweep();
+        setSweepDuration(event.target.value);
+      }
+    });
   });
 
   bindPressAndHold(elements.decreaseButton, -1);
