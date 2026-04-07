@@ -19,14 +19,14 @@
         <div class="hero-row">
           <div class="display display-compact" aria-live="polite">
             <span id="frequencyValue">440</span>
-            <span id="frequencyUnit" class="display-unit">Hz</span>
+            <span id="frequencyUnit" class="display-unit sr-only">Hz</span>
           </div>
           <button id="powerButton" class="btn btn-primary btn-power" type="button">Start</button>
         </div>
 
         <div class="control-grid">
           <fieldset class="field">
-            <legend>Sorgente</legend>
+            <legend class="sr-only">Sorgente</legend>
             <div class="wave-group" role="radiogroup" aria-label="Sorgente audio">
               <label class="wave-option" title="Sine">
                 <input type="radio" name="waveform" value="sine" checked />
@@ -88,7 +88,7 @@
         </div>
 
         <fieldset class="field channel-field">
-          <legend>Canale</legend>
+          <legend class="sr-only">Canale</legend>
           <div id="channelGroup" class="channel-group" role="radiogroup" aria-label="Canale di uscita">
             <label class="channel-option">
               <input type="radio" name="channel" value="left" />
@@ -107,18 +107,13 @@
       </section>
 
       <section id="frequencyPanel" class="panel">
-        <div class="panel-head">
-          <h2>Frequency</h2>
-          <span class="panel-note">20-22000 Hz</span>
-        </div>
-
         <div class="frequency-grid">
           <div class="stepper-row stepper-row-compact">
             <button id="decreaseButton" class="btn btn-step" type="button" aria-label="Diminuisci frequenza">
               -
             </button>
             <label class="field field-grow">
-              <span>Hz</span>
+              <span class="sr-only">Frequenza</span>
               <input
                 id="frequencyInput"
                 type="number"
@@ -148,7 +143,7 @@
         </div>
 
         <label class="field frequency-slider-field">
-          <span>Slider</span>
+          <span class="sr-only">Slider frequenza</span>
           <input
             id="frequencySlider"
             type="range"
