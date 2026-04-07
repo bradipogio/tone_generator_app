@@ -170,7 +170,7 @@
       <section id="sweepPanel" class="panel">
         <div class="panel-head">
           <h2>Sweep</h2>
-          <span class="panel-note">Hz/s</span>
+          <span class="panel-note">log</span>
         </div>
 
         <div class="control-grid compact-grid sweep-grid">
@@ -221,6 +221,52 @@
               <option value="ping-pong">ping-pong</option>
             </select>
           </label>
+        </div>
+
+        <div class="sweep-visual-grid">
+          <label class="field">
+            <div class="field-inline">
+              <span>Speed Curve</span>
+              <output id="sweepSpeedValue" for="sweepSpeedSlider">100</output>
+            </div>
+            <input
+              id="sweepSpeedSlider"
+              type="range"
+              min="0"
+              max="1000"
+              step="1"
+              value="638"
+            />
+          </label>
+
+          <div class="field sweep-range-field">
+            <div class="field-inline">
+              <span>Range</span>
+              <output id="sweepRangeValue" for="sweepStartSlider sweepEndSlider">20 → 1000 Hz</output>
+            </div>
+
+            <div class="dual-range">
+              <div id="sweepRangeFill" class="dual-range-fill"></div>
+              <input
+                id="sweepStartSlider"
+                class="range-start"
+                type="range"
+                min="0"
+                max="1000"
+                step="1"
+                value="300"
+              />
+              <input
+                id="sweepEndSlider"
+                class="range-end"
+                type="range"
+                min="0"
+                max="1000"
+                step="1"
+                value="638"
+              />
+            </div>
+          </div>
         </div>
 
         <div class="button-row button-row-triple">

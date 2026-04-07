@@ -8,8 +8,10 @@ const HOLD_DELAY_MS = 320;
 const HOLD_INTERVAL_MS = 90;
 const NOISE_BUFFER_SECONDS = 2;
 const FREQUENCY_SLIDER_MAX = 1000;
-const LOG_MIN_FREQUENCY = Math.log10(MIN_FREQUENCY);
-const LOG_MAX_FREQUENCY = Math.log10(MAX_FREQUENCY);
+const SWEEP_SPEED_MIN = 0.1;
+const SWEEP_SPEED_MAX = 50000;
+const SWEEP_SPEED_SLIDER_MAX = 1000;
+const LOG_SWEEP_RATE_MULTIPLIER = 0.2;
 
 const state = {
   frequency: DEFAULT_FREQUENCY,
@@ -46,6 +48,7 @@ const audio = {
 const sweepState = {
   frameId: null,
   lastTimestamp: 0,
+  progress: 0,
 };
 
 const elements = {
@@ -63,7 +66,13 @@ const elements = {
   sweepStartInput: document.getElementById("sweepStartInput"),
   sweepEndInput: document.getElementById("sweepEndInput"),
   sweepSpeedInput: document.getElementById("sweepSpeedInput"),
+  sweepSpeedSlider: document.getElementById("sweepSpeedSlider"),
+  sweepSpeedValue: document.getElementById("sweepSpeedValue"),
   sweepDirectionSelect: document.getElementById("sweepDirectionSelect"),
+  sweepStartSlider: document.getElementById("sweepStartSlider"),
+  sweepEndSlider: document.getElementById("sweepEndSlider"),
+  sweepRangeFill: document.getElementById("sweepRangeFill"),
+  sweepRangeValue: document.getElementById("sweepRangeValue"),
   startSweepButton: document.getElementById("startSweepButton"),
   stopSweepButton: document.getElementById("stopSweepButton"),
   holdButton: document.getElementById("holdButton"),
@@ -98,7 +107,7 @@ function parseSweepSpeed(value, fallback = state.sweep.speed) {
     return fallback;
   }
 
-  return clamp(parsed, 0.1, 50000);
+  return clamp(parsed, SWEEP_SPEED_MIN, SWEEP_SPEED_MAX);
 }
 
 function formatFrequency(value) {
@@ -113,18 +122,71 @@ function formatFrequency(value) {
   return value.toFixed(2).replace(/\.?0+$/, "");
 }
 
+function formatSpeed(value) {
+  if (value >= 1000) {
+    return value.toLocaleString("it-IT", { maximumFractionDigits: 0 });
+  }
+
+  if (value >= 10) {
+    return value.toFixed(1).replace(/\.0$/, "");
+  }
+
+  return value.toFixed(2).replace(/\.?0+$/, "");
+}
+
+function sliderValueToLogValue(sliderValue, minValue, maxValue, sliderMax) {
+  const normalizedValue = clamp(sliderValue, 0, sliderMax) / sliderMax;
+  const exponent =
+    Math.log10(minValue) + normalizedValue * (Math.log10(maxValue) - Math.log10(minValue));
+
+  return clamp(10 ** exponent, minValue, maxValue);
+}
+
+function logValueToSliderValue(value, minValue, maxValue, sliderMax) {
+  const clampedValue = clamp(value, minValue, maxValue);
+  const normalizedValue =
+    (Math.log10(clampedValue) - Math.log10(minValue)) /
+    (Math.log10(maxValue) - Math.log10(minValue));
+
+  return Math.round(normalizedValue * sliderMax);
+}
+
 function sliderValueToFrequency(sliderValue) {
-  const normalizedValue = clamp(sliderValue, 0, FREQUENCY_SLIDER_MAX) / FREQUENCY_SLIDER_MAX;
-  const exponent = LOG_MIN_FREQUENCY + normalizedValue * (LOG_MAX_FREQUENCY - LOG_MIN_FREQUENCY);
-  return clamp(10 ** exponent, MIN_FREQUENCY, MAX_FREQUENCY);
+  return sliderValueToLogValue(sliderValue, MIN_FREQUENCY, MAX_FREQUENCY, FREQUENCY_SLIDER_MAX);
 }
 
 function frequencyToSliderValue(frequency) {
-  const clampedFrequency = clamp(frequency, MIN_FREQUENCY, MAX_FREQUENCY);
-  const normalizedValue =
-    (Math.log10(clampedFrequency) - LOG_MIN_FREQUENCY) / (LOG_MAX_FREQUENCY - LOG_MIN_FREQUENCY);
+  return logValueToSliderValue(frequency, MIN_FREQUENCY, MAX_FREQUENCY, FREQUENCY_SLIDER_MAX);
+}
 
-  return Math.round(normalizedValue * FREQUENCY_SLIDER_MAX);
+function sliderValueToSweepSpeed(sliderValue) {
+  return sliderValueToLogValue(sliderValue, SWEEP_SPEED_MIN, SWEEP_SPEED_MAX, SWEEP_SPEED_SLIDER_MAX);
+}
+
+function sweepSpeedToSliderValue(speedValue) {
+  return logValueToSliderValue(speedValue, SWEEP_SPEED_MIN, SWEEP_SPEED_MAX, SWEEP_SPEED_SLIDER_MAX);
+}
+
+function interpolateLogFrequency(startFrequency, endFrequency, progress) {
+  const normalizedProgress = clamp(progress, 0, 1);
+
+  if (startFrequency === endFrequency) {
+    return startFrequency;
+  }
+
+  const interpolatedExponent =
+    Math.log10(startFrequency) +
+    (Math.log10(endFrequency) - Math.log10(startFrequency)) * normalizedProgress;
+
+  return clamp(10 ** interpolatedExponent, MIN_FREQUENCY, MAX_FREQUENCY);
+}
+
+function getSweepProgressDelta(elapsedSeconds) {
+  const logSpan = Math.abs(Math.log10(state.sweep.end) - Math.log10(state.sweep.start));
+  const safeLogSpan = Math.max(logSpan, 0.0001);
+  const speedFactor = Math.log10(state.sweep.speed + 1);
+
+  return (speedFactor * LOG_SWEEP_RATE_MULTIPLIER * elapsedSeconds) / safeLogSpan;
 }
 
 function updateStatus(text) {
@@ -178,7 +240,23 @@ function updateSweepUI() {
   elements.sweepStartInput.value = String(Number(state.sweep.start.toFixed(2)));
   elements.sweepEndInput.value = String(Number(state.sweep.end.toFixed(2)));
   elements.sweepSpeedInput.value = String(Number(state.sweep.speed.toFixed(2)));
+  elements.sweepSpeedSlider.value = String(sweepSpeedToSliderValue(state.sweep.speed));
+  elements.sweepSpeedValue.textContent = formatSpeed(state.sweep.speed);
   elements.sweepDirectionSelect.value = state.sweep.direction;
+  elements.sweepStartSlider.value = String(frequencyToSliderValue(state.sweep.start));
+  elements.sweepEndSlider.value = String(frequencyToSliderValue(state.sweep.end));
+
+  const startSliderValue = Number(elements.sweepStartSlider.value);
+  const endSliderValue = Number(elements.sweepEndSlider.value);
+  const left = (Math.min(startSliderValue, endSliderValue) / FREQUENCY_SLIDER_MAX) * 100;
+  const width = (Math.abs(endSliderValue - startSliderValue) / FREQUENCY_SLIDER_MAX) * 100;
+
+  elements.sweepRangeFill.style.left = `${left}%`;
+  elements.sweepRangeFill.style.width = `${Math.max(width, 0.8)}%`;
+  elements.sweepStartSlider.style.zIndex = startSliderValue <= endSliderValue ? "2" : "3";
+  elements.sweepEndSlider.style.zIndex = endSliderValue < startSliderValue ? "2" : "3";
+  elements.sweepRangeValue.textContent =
+    `${formatFrequency(state.sweep.start)} → ${formatFrequency(state.sweep.end)} Hz`;
 }
 
 function updateWaveformUI() {
@@ -205,6 +283,9 @@ function updateModeUI() {
     elements.sweepStartInput,
     elements.sweepEndInput,
     elements.sweepSpeedInput,
+    elements.sweepSpeedSlider,
+    elements.sweepStartSlider,
+    elements.sweepEndSlider,
     elements.sweepDirectionSelect,
   ].forEach((element) => {
     element.disabled = disabled;
@@ -360,9 +441,14 @@ async function startTone() {
 function stopTone() {
   stopSweep();
 
+  fadeOutAndStop("Pronto");
+}
+
+function fadeOutAndStop(nextStatus = "Pronto") {
+
   if (!audio.context || !audio.masterGainNode) {
     state.isPlaying = false;
-    updateStatus("Pronto");
+    updateStatus(nextStatus);
     updateButtonState();
     return;
   }
@@ -378,10 +464,11 @@ function stopTone() {
   audio.stopTimeoutId = window.setTimeout(() => {
     stopCurrentSource(sourceToStop);
     audio.stopTimeoutId = null;
+    updateStatus(nextStatus);
   }, (FADE_TIME + 0.02) * 1000);
 
   state.isPlaying = false;
-  updateStatus("Pronto");
+  updateStatus(nextStatus);
   updateButtonState();
 }
 
@@ -489,22 +576,13 @@ function stopSweep() {
   }
 
   sweepState.lastTimestamp = 0;
+  sweepState.progress = 0;
 
   if (state.isSweepActive) {
     state.isSweepActive = false;
     updateStatus(state.isPlaying ? "Tono attivo" : "Pronto");
     updateButtonState();
   }
-}
-
-function readSweepInputs() {
-  state.sweep.start = parseFrequency(elements.sweepStartInput.value, state.sweep.start);
-  state.sweep.end = parseFrequency(elements.sweepEndInput.value, state.sweep.end);
-  state.sweep.speed = parseSweepSpeed(elements.sweepSpeedInput.value, state.sweep.speed);
-  state.sweep.direction = elements.sweepDirectionSelect.value;
-  state.sweep.min = Math.min(state.sweep.start, state.sweep.end);
-  state.sweep.max = Math.max(state.sweep.start, state.sweep.end);
-  updateSweepUI();
 }
 
 function advanceSweep(timestamp) {
@@ -518,41 +596,63 @@ function advanceSweep(timestamp) {
 
   const elapsedSeconds = (timestamp - sweepState.lastTimestamp) / 1000;
   sweepState.lastTimestamp = timestamp;
+  const progressDelta = getSweepProgressDelta(elapsedSeconds);
 
-  let nextFrequency = state.frequency + state.sweep.speed * elapsedSeconds * state.sweep.currentDirection;
+  if (state.sweep.direction === "up" || state.sweep.direction === "down") {
+    sweepState.progress = clamp(sweepState.progress + progressDelta, 0, 1);
+    setFrequency(interpolateLogFrequency(state.sweep.start, state.sweep.end, sweepState.progress));
 
-  if (state.sweep.direction === "up") {
-    if (nextFrequency >= state.sweep.end) {
-      nextFrequency = state.sweep.end;
+    if (sweepState.progress >= 1) {
       state.isSweepActive = false;
+      sweepState.frameId = null;
+      sweepState.lastTimestamp = 0;
+      sweepState.progress = 0;
+      fadeOutAndStop("Sweep completo");
+      return;
     }
-  } else if (state.sweep.direction === "down") {
-    if (nextFrequency <= state.sweep.end) {
-      nextFrequency = state.sweep.end;
-      state.isSweepActive = false;
-    }
-  } else {
-    if (nextFrequency > state.sweep.max) {
-      const overflow = nextFrequency - state.sweep.max;
-      nextFrequency = state.sweep.max - overflow;
-      state.sweep.currentDirection = -1;
-    } else if (nextFrequency < state.sweep.min) {
-      const overflow = state.sweep.min - nextFrequency;
-      nextFrequency = state.sweep.min + overflow;
-      state.sweep.currentDirection = 1;
-    }
-  }
 
-  setFrequency(nextFrequency);
-
-  if (!state.isSweepActive) {
-    sweepState.frameId = null;
-    updateStatus(state.isPlaying ? "Tono attivo" : "Pronto");
-    updateButtonState();
+    sweepState.frameId = window.requestAnimationFrame(advanceSweep);
     return;
   }
 
+  sweepState.progress += progressDelta * state.sweep.currentDirection;
+
+  if (sweepState.progress > 1) {
+    const overflow = sweepState.progress - 1;
+    sweepState.progress = 1 - overflow;
+    state.sweep.currentDirection = -1;
+  } else if (sweepState.progress < 0) {
+    const overflow = Math.abs(sweepState.progress);
+    sweepState.progress = overflow;
+    state.sweep.currentDirection = 1;
+  }
+
+  setFrequency(interpolateLogFrequency(state.sweep.start, state.sweep.end, sweepState.progress));
+
   sweepState.frameId = window.requestAnimationFrame(advanceSweep);
+}
+
+function syncSweepFromInputs() {
+  state.sweep.start = parseFrequency(elements.sweepStartInput.value, state.sweep.start);
+  state.sweep.end = parseFrequency(elements.sweepEndInput.value, state.sweep.end);
+  state.sweep.speed = parseSweepSpeed(elements.sweepSpeedInput.value, state.sweep.speed);
+  state.sweep.direction = elements.sweepDirectionSelect.value;
+  state.sweep.min = Math.min(state.sweep.start, state.sweep.end);
+  state.sweep.max = Math.max(state.sweep.start, state.sweep.end);
+  updateSweepUI();
+}
+
+function syncSweepFromSliders() {
+  state.sweep.start = sliderValueToFrequency(Number(elements.sweepStartSlider.value));
+  state.sweep.end = sliderValueToFrequency(Number(elements.sweepEndSlider.value));
+  state.sweep.min = Math.min(state.sweep.start, state.sweep.end);
+  state.sweep.max = Math.max(state.sweep.start, state.sweep.end);
+  updateSweepUI();
+}
+
+function syncSweepSpeedFromSlider() {
+  state.sweep.speed = sliderValueToSweepSpeed(Number(elements.sweepSpeedSlider.value));
+  updateSweepUI();
 }
 
 async function startSweep() {
@@ -560,7 +660,7 @@ async function startSweep() {
     return;
   }
 
-  readSweepInputs();
+  syncSweepFromInputs();
   stopSweep();
 
   if (state.sweep.direction === "up") {
@@ -570,22 +670,21 @@ async function startSweep() {
     }
 
     state.sweep.currentDirection = 1;
-    setFrequency(state.sweep.start);
   } else if (state.sweep.direction === "down") {
     if (state.sweep.start < state.sweep.end) {
       [state.sweep.start, state.sweep.end] = [state.sweep.end, state.sweep.start];
       updateSweepUI();
     }
 
-    state.sweep.currentDirection = -1;
-    setFrequency(state.sweep.start);
+    state.sweep.currentDirection = 1;
   } else {
-    state.sweep.currentDirection = state.sweep.start <= state.sweep.end ? 1 : -1;
-    setFrequency(state.sweep.start);
+    state.sweep.currentDirection = 1;
   }
 
   state.sweep.min = Math.min(state.sweep.start, state.sweep.end);
   state.sweep.max = Math.max(state.sweep.start, state.sweep.end);
+  sweepState.progress = 0;
+  setFrequency(state.sweep.start);
 
   if (state.sweep.min === state.sweep.max) {
     await startTone();
@@ -729,11 +828,40 @@ function bindEvents() {
   });
 
   [elements.sweepStartInput, elements.sweepEndInput, elements.sweepSpeedInput].forEach((input) => {
-    input.addEventListener("change", readSweepInputs);
-    input.addEventListener("blur", readSweepInputs);
+    input.addEventListener("change", () => {
+      stopSweep();
+      syncSweepFromInputs();
+    });
+
+    input.addEventListener("blur", () => {
+      stopSweep();
+      syncSweepFromInputs();
+    });
   });
 
-  elements.sweepDirectionSelect.addEventListener("change", readSweepInputs);
+  elements.frequencySlider.addEventListener("change", () => {
+    elements.frequencySlider.value = String(frequencyToSliderValue(state.frequency));
+  });
+
+  elements.sweepSpeedSlider.addEventListener("input", () => {
+    stopSweep();
+    syncSweepSpeedFromSlider();
+  });
+
+  elements.sweepStartSlider.addEventListener("input", () => {
+    stopSweep();
+    syncSweepFromSliders();
+  });
+
+  elements.sweepEndSlider.addEventListener("input", () => {
+    stopSweep();
+    syncSweepFromSliders();
+  });
+
+  elements.sweepDirectionSelect.addEventListener("change", () => {
+    stopSweep();
+    syncSweepFromInputs();
+  });
 
   elements.startSweepButton.addEventListener("click", () => {
     startSweep().catch(() => updateStatus("Sweep non disponibile"));
