@@ -598,6 +598,7 @@ input[type="range"]::-moz-range-thumb {
   position: absolute;
   inset: 0;
   margin: 0;
+  pointer-events: none;
 }
 
 .dual-range input::-webkit-slider-runnable-track {
@@ -614,6 +615,16 @@ input[type="range"]::-moz-range-thumb {
 
 .range-end {
   --thumb-color: var(--secondary);
+}
+
+.range-start::-webkit-slider-thumb,
+.range-end::-webkit-slider-thumb {
+  pointer-events: auto;
+}
+
+.range-start::-moz-range-thumb,
+.range-end::-moz-range-thumb {
+  pointer-events: auto;
 }
 
 @media (min-width: 640px) {
