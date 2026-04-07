@@ -9,7 +9,6 @@ const HOLD_INTERVAL_MS = 90;
 const NOISE_BUFFER_SECONDS = 2;
 const FREQUENCY_SLIDER_MAX = 1000;
 const MANUAL_FREQUENCY_STEP = 1;
-const PULL_TO_REFRESH_THRESHOLD = 110;
 const SCOPE_FPS = 30;
 const SCOPE_HEIGHT = 112;
 const PLAY_ICON_MARKUP =
@@ -53,12 +52,6 @@ const sweepState = {
   frameId: null,
   lastTimestamp: 0,
   progress: 0,
-};
-
-const refreshGesture = {
-  active: false,
-  startX: 0,
-  startY: 0,
 };
 
 const scopeState = {
@@ -791,53 +784,6 @@ function changeFrequencyByStep(stepDelta) {
   applyManualFrequency(state.frequency + stepDelta);
 }
 
-function bindPullToRefresh() {
-  const interactiveSelector = 'button, input, select, textarea, .dual-range';
-
-  document.addEventListener(
-    "touchstart",
-    (event) => {
-      const firstTouch = event.touches[0];
-      const isInteractive = event.target.closest(interactiveSelector);
-
-      refreshGesture.active =
-        Boolean(firstTouch) && window.scrollY <= 2 && !isInteractive;
-
-      if (!refreshGesture.active) {
-        return;
-      }
-
-      refreshGesture.startX = firstTouch.clientX;
-      refreshGesture.startY = firstTouch.clientY;
-    },
-    { passive: true },
-  );
-
-  document.addEventListener(
-    "touchend",
-    (event) => {
-      if (!refreshGesture.active) {
-        return;
-      }
-
-      const changedTouch = event.changedTouches[0];
-      refreshGesture.active = false;
-
-      if (!changedTouch) {
-        return;
-      }
-
-      const deltaY = changedTouch.clientY - refreshGesture.startY;
-      const deltaX = Math.abs(changedTouch.clientX - refreshGesture.startX);
-
-      if (deltaY >= PULL_TO_REFRESH_THRESHOLD && deltaX < 70) {
-        window.location.reload();
-      }
-    },
-    { passive: true },
-  );
-}
-
 function bindScopeResize() {
   resizeScopeCanvas();
   clearScope();
@@ -991,7 +937,6 @@ function init() {
   updateStatus("Pronto");
   bindAudioUnlock();
   bindScopeResize();
-  bindPullToRefresh();
   bindEvents();
 }
 
