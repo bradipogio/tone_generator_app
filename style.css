@@ -148,6 +148,14 @@ legend {
   padding-top: 18px;
 }
 
+.hero-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: stretch;
+  margin-bottom: 14px;
+}
+
 .panel-head {
   display: flex;
   align-items: center;
@@ -183,7 +191,6 @@ legend {
   display: flex;
   align-items: baseline;
   gap: 8px;
-  margin-bottom: 14px;
   padding: 14px 16px;
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 18px;
@@ -192,7 +199,7 @@ legend {
 }
 
 .display-compact {
-  margin-bottom: 12px;
+  margin-bottom: 0;
   padding: 12px 14px;
   border-radius: 18px;
 }
@@ -358,8 +365,17 @@ legend {
   color: #f7fbfa;
 }
 
+.btn-primary.is-on {
+  background: linear-gradient(180deg, #f08d76 0%, var(--secondary) 100%);
+  color: #fffaf7;
+}
+
 .btn-primary:hover {
   background: var(--primary-strong);
+}
+
+.btn-primary.is-on:hover {
+  background: var(--secondary-strong);
 }
 
 .btn-secondary {
@@ -383,6 +399,11 @@ legend {
   background: linear-gradient(180deg, #274249 0%, #1c3338 100%);
   color: #f6fbfa;
   box-shadow: 0 10px 18px rgba(28, 51, 56, 0.18);
+}
+
+.btn-power {
+  min-width: 104px;
+  padding: 0 18px;
 }
 
 .channel-group {
@@ -584,6 +605,10 @@ input[type="range"]::-moz-range-thumb {
 }
 
 @media (min-width: 640px) {
+  .hero-row {
+    grid-template-columns: minmax(0, 1fr) 124px;
+  }
+
   .control-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

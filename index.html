@@ -16,19 +16,12 @@
   <body>
     <main class="app-shell">
       <section class="panel panel-main">
-        <div class="panel-head">
-          <h1>Tone Generator</h1>
-          <p id="statusText" class="status">Pronto</p>
-        </div>
-
-        <div class="display display-compact" aria-live="polite">
-          <span id="frequencyValue">440</span>
-          <span id="frequencyUnit" class="display-unit">Hz</span>
-        </div>
-
-        <div class="button-row">
-          <button id="startButton" class="btn btn-primary" type="button">Start</button>
-          <button id="stopButton" class="btn btn-secondary" type="button">Stop</button>
+        <div class="hero-row">
+          <div class="display display-compact" aria-live="polite">
+            <span id="frequencyValue">440</span>
+            <span id="frequencyUnit" class="display-unit">Hz</span>
+          </div>
+          <button id="powerButton" class="btn btn-primary btn-power" type="button">Start</button>
         </div>
 
         <div class="control-grid">

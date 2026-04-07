@@ -57,8 +57,7 @@ const elements = {
   frequencyInput: document.getElementById("frequencyInput"),
   frequencySlider: document.getElementById("frequencySlider"),
   stepSelect: document.getElementById("stepSelect"),
-  startButton: document.getElementById("startButton"),
-  stopButton: document.getElementById("stopButton"),
+  powerButton: document.getElementById("powerButton"),
   volumeInput: document.getElementById("volumeInput"),
   volumeValue: document.getElementById("volumeValue"),
   decreaseButton: document.getElementById("decreaseButton"),
@@ -76,7 +75,6 @@ const elements = {
   startSweepButton: document.getElementById("startSweepButton"),
   stopSweepButton: document.getElementById("stopSweepButton"),
   holdButton: document.getElementById("holdButton"),
-  statusText: document.getElementById("statusText"),
   display: document.querySelector(".display"),
   frequencyPanel: document.getElementById("frequencyPanel"),
   sweepPanel: document.getElementById("sweepPanel"),
@@ -190,7 +188,7 @@ function getSweepProgressDelta(elapsedSeconds) {
 }
 
 function updateStatus(text) {
-  elements.statusText.textContent = text;
+  void text;
 }
 
 function setAudioParamSmoothly(audioParam, value, timeConstant = PARAM_SMOOTHING) {
@@ -298,8 +296,8 @@ function updateModeUI() {
 function updateButtonState() {
   const disabledForNoise = isNoiseMode();
 
-  elements.startButton.disabled = state.isPlaying;
-  elements.stopButton.disabled = !state.isPlaying;
+  elements.powerButton.textContent = state.isPlaying ? "Stop" : "Start";
+  elements.powerButton.classList.toggle("is-on", state.isPlaying);
   elements.startSweepButton.disabled = disabledForNoise || state.isSweepActive;
   elements.stopSweepButton.disabled = disabledForNoise || !state.isSweepActive;
   elements.holdButton.disabled = disabledForNoise || !state.isSweepActive;
@@ -779,12 +777,13 @@ function bindAudioUnlock() {
 }
 
 function bindEvents() {
-  elements.startButton.addEventListener("click", () => {
-    startTone().catch(() => updateStatus("Audio non disponibile"));
-  });
+  elements.powerButton.addEventListener("click", () => {
+    if (state.isPlaying) {
+      stopTone();
+      return;
+    }
 
-  elements.stopButton.addEventListener("click", () => {
-    stopTone();
+    startTone().catch(() => updateStatus("Audio non disponibile"));
   });
 
   elements.waveformInputs.forEach((input) => {
