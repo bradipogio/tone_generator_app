@@ -6,6 +6,7 @@ const FADE_TIME = 0.03;
 const PARAM_SMOOTHING = 0.01;
 const HOLD_DELAY_MS = 320;
 const HOLD_INTERVAL_MS = 90;
+const NOISE_BUFFER_SECONDS = 2;
 
 const state = {
   frequency: DEFAULT_FREQUENCY,
@@ -28,11 +29,15 @@ const state = {
 
 const audio = {
   context: null,
-  oscillator: null,
-  gainNode: null,
+  sourceNode: null,
+  sourceKind: null,
+  noiseBuffer: null,
+  masterGainNode: null,
   mergerNode: null,
   leftGainNode: null,
   rightGainNode: null,
+  stopTimeoutId: null,
+  switchTimeoutId: null,
 };
 
 const sweepState = {
@@ -42,12 +47,12 @@ const sweepState = {
 
 const elements = {
   frequencyValue: document.getElementById("frequencyValue"),
+  frequencyUnit: document.getElementById("frequencyUnit"),
   frequencyInput: document.getElementById("frequencyInput"),
   stepSelect: document.getElementById("stepSelect"),
   startButton: document.getElementById("startButton"),
   stopButton: document.getElementById("stopButton"),
   waveformSelect: document.getElementById("waveformSelect"),
-  channelSelect: document.getElementById("channelSelect"),
   volumeInput: document.getElementById("volumeInput"),
   volumeValue: document.getElementById("volumeValue"),
   decreaseButton: document.getElementById("decreaseButton"),
@@ -60,11 +65,18 @@ const elements = {
   stopSweepButton: document.getElementById("stopSweepButton"),
   holdButton: document.getElementById("holdButton"),
   statusText: document.getElementById("statusText"),
-  presetButtons: Array.from(document.querySelectorAll("[data-frequency]")),
+  display: document.querySelector(".display"),
+  frequencyPanel: document.getElementById("frequencyPanel"),
+  sweepPanel: document.getElementById("sweepPanel"),
+  channelInputs: Array.from(document.querySelectorAll('input[name="channel"]')),
 };
 
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
+}
+
+function isNoiseMode() {
+  return state.waveform === "noise";
 }
 
 function parseFrequency(value, fallback = state.frequency) {
@@ -72,6 +84,7 @@ function parseFrequency(value, fallback = state.frequency) {
   if (!Number.isFinite(parsed)) {
     return fallback;
   }
+
   return clamp(parsed, MIN_FREQUENCY, MAX_FREQUENCY);
 }
 
@@ -80,14 +93,13 @@ function parseSweepSpeed(value, fallback = state.sweep.speed) {
   if (!Number.isFinite(parsed) || parsed <= 0) {
     return fallback;
   }
+
   return clamp(parsed, 0.1, 50000);
 }
 
 function formatFrequency(value) {
   if (value >= 1000) {
-    return value.toLocaleString("it-IT", {
-      maximumFractionDigits: 0,
-    });
+    return value.toLocaleString("it-IT", { maximumFractionDigits: 0 });
   }
 
   if (value >= 100) {
@@ -99,46 +111,6 @@ function formatFrequency(value) {
 
 function updateStatus(text) {
   elements.statusText.textContent = text;
-}
-
-function updateFrequencyUI() {
-  elements.frequencyValue.textContent = formatFrequency(state.frequency);
-  elements.frequencyInput.value = String(Number(state.frequency.toFixed(2)));
-
-  elements.presetButtons.forEach((button) => {
-    const presetFrequency = Number(button.dataset.frequency);
-    const isActive = Math.abs(presetFrequency - state.frequency) < 0.001;
-    button.classList.toggle("is-active", isActive);
-  });
-}
-
-function updateVolumeUI() {
-  const volumePercentage = Math.round(state.volume * 100);
-  elements.volumeInput.value = String(volumePercentage);
-  elements.volumeValue.textContent = `${volumePercentage}%`;
-}
-
-function updateSweepUI() {
-  elements.sweepStartInput.value = String(Number(state.sweep.start.toFixed(2)));
-  elements.sweepEndInput.value = String(Number(state.sweep.end.toFixed(2)));
-  elements.sweepSpeedInput.value = String(Number(state.sweep.speed.toFixed(2)));
-  elements.sweepDirectionSelect.value = state.sweep.direction;
-}
-
-function updateButtonState() {
-  elements.startButton.disabled = state.isPlaying;
-  elements.stopButton.disabled = !state.isPlaying;
-  elements.startSweepButton.disabled = state.isSweepActive;
-  elements.stopSweepButton.disabled = !state.isSweepActive;
-  elements.holdButton.disabled = !state.isSweepActive;
-  elements.holdButton.classList.remove("is-active");
-}
-
-function syncAllUI() {
-  updateFrequencyUI();
-  updateVolumeUI();
-  updateSweepUI();
-  updateButtonState();
 }
 
 function setAudioParamSmoothly(audioParam, value, timeConstant = PARAM_SMOOTHING) {
@@ -163,6 +135,282 @@ function getChannelGains(channel) {
   return { left: 1, right: 1 };
 }
 
+function updateFrequencyUI() {
+  if (isNoiseMode()) {
+    elements.frequencyValue.textContent = "NOISE";
+    elements.frequencyUnit.hidden = true;
+    elements.display.classList.add("is-noise");
+  } else {
+    elements.frequencyValue.textContent = formatFrequency(state.frequency);
+    elements.frequencyUnit.hidden = false;
+    elements.display.classList.remove("is-noise");
+  }
+
+  elements.frequencyInput.value = String(Number(state.frequency.toFixed(2)));
+}
+
+function updateVolumeUI() {
+  const volumePercentage = Math.round(state.volume * 100);
+  elements.volumeInput.value = String(volumePercentage);
+  elements.volumeValue.textContent = `${volumePercentage}%`;
+}
+
+function updateSweepUI() {
+  elements.sweepStartInput.value = String(Number(state.sweep.start.toFixed(2)));
+  elements.sweepEndInput.value = String(Number(state.sweep.end.toFixed(2)));
+  elements.sweepSpeedInput.value = String(Number(state.sweep.speed.toFixed(2)));
+  elements.sweepDirectionSelect.value = state.sweep.direction;
+}
+
+function updateChannelUI() {
+  elements.channelInputs.forEach((input) => {
+    input.checked = input.value === state.channel;
+  });
+}
+
+function updateModeUI() {
+  const disabled = isNoiseMode();
+
+  [
+    elements.frequencyInput,
+    elements.stepSelect,
+    elements.decreaseButton,
+    elements.increaseButton,
+    elements.sweepStartInput,
+    elements.sweepEndInput,
+    elements.sweepSpeedInput,
+    elements.sweepDirectionSelect,
+  ].forEach((element) => {
+    element.disabled = disabled;
+  });
+
+  elements.frequencyPanel.classList.toggle("is-disabled", disabled);
+  elements.sweepPanel.classList.toggle("is-disabled", disabled);
+}
+
+function updateButtonState() {
+  const disabledForNoise = isNoiseMode();
+
+  elements.startButton.disabled = state.isPlaying;
+  elements.stopButton.disabled = !state.isPlaying;
+  elements.startSweepButton.disabled = disabledForNoise || state.isSweepActive;
+  elements.stopSweepButton.disabled = disabledForNoise || !state.isSweepActive;
+  elements.holdButton.disabled = disabledForNoise || !state.isSweepActive;
+}
+
+function syncAllUI() {
+  updateFrequencyUI();
+  updateVolumeUI();
+  updateSweepUI();
+  updateChannelUI();
+  updateModeUI();
+  updateButtonState();
+}
+
+function ensureAudioGraph() {
+  if (audio.context) {
+    return;
+  }
+
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  audio.context = new AudioContextClass();
+  audio.masterGainNode = audio.context.createGain();
+  audio.leftGainNode = audio.context.createGain();
+  audio.rightGainNode = audio.context.createGain();
+  audio.mergerNode = audio.context.createChannelMerger(2);
+
+  audio.masterGainNode.gain.value = 0;
+  audio.leftGainNode.gain.value = 1;
+  audio.rightGainNode.gain.value = 1;
+
+  audio.masterGainNode.connect(audio.leftGainNode);
+  audio.masterGainNode.connect(audio.rightGainNode);
+  audio.leftGainNode.connect(audio.mergerNode, 0, 0);
+  audio.rightGainNode.connect(audio.mergerNode, 0, 1);
+  audio.mergerNode.connect(audio.context.destination);
+
+  applyChannelRouting();
+}
+
+function ensureNoiseBuffer() {
+  if (audio.noiseBuffer || !audio.context) {
+    return;
+  }
+
+  const frameCount = Math.floor(audio.context.sampleRate * NOISE_BUFFER_SECONDS);
+  const noiseBuffer = audio.context.createBuffer(1, frameCount, audio.context.sampleRate);
+  const channelData = noiseBuffer.getChannelData(0);
+
+  for (let i = 0; i < frameCount; i += 1) {
+    channelData[i] = Math.random() * 2 - 1;
+  }
+
+  audio.noiseBuffer = noiseBuffer;
+}
+
+function stopCurrentSource(sourceNode = audio.sourceNode) {
+  if (!sourceNode) {
+    return;
+  }
+
+  try {
+    sourceNode.stop();
+  } catch (error) {
+    // The node may already be stopped, which is fine.
+  }
+
+  sourceNode.disconnect();
+
+  if (audio.sourceNode === sourceNode) {
+    audio.sourceNode = null;
+    audio.sourceKind = null;
+  }
+}
+
+function clearScheduledSourceChanges() {
+  if (audio.stopTimeoutId) {
+    window.clearTimeout(audio.stopTimeoutId);
+    audio.stopTimeoutId = null;
+  }
+
+  if (audio.switchTimeoutId) {
+    window.clearTimeout(audio.switchTimeoutId);
+    audio.switchTimeoutId = null;
+  }
+}
+
+function createSource() {
+  ensureAudioGraph();
+
+  if (isNoiseMode()) {
+    ensureNoiseBuffer();
+
+    const noiseSource = audio.context.createBufferSource();
+    noiseSource.buffer = audio.noiseBuffer;
+    noiseSource.loop = true;
+    noiseSource.connect(audio.masterGainNode);
+    noiseSource.start();
+    audio.sourceNode = noiseSource;
+    audio.sourceKind = "noise";
+    return;
+  }
+
+  const oscillator = audio.context.createOscillator();
+  oscillator.type = state.waveform;
+  oscillator.frequency.value = state.frequency;
+  oscillator.connect(audio.masterGainNode);
+  oscillator.start();
+  audio.sourceNode = oscillator;
+  audio.sourceKind = "tone";
+}
+
+async function ensureRunningContext() {
+  ensureAudioGraph();
+
+  if (audio.context.state !== "running") {
+    await audio.context.resume();
+  }
+}
+
+async function startTone() {
+  await ensureRunningContext();
+  clearScheduledSourceChanges();
+
+  if (!audio.sourceNode) {
+    createSource();
+  }
+
+  const now = audio.context.currentTime;
+  audio.masterGainNode.gain.cancelScheduledValues(now);
+  audio.masterGainNode.gain.setValueAtTime(audio.masterGainNode.gain.value, now);
+  audio.masterGainNode.gain.linearRampToValueAtTime(state.volume, now + FADE_TIME);
+
+  state.isPlaying = true;
+  updateStatus(isNoiseMode() ? "Noise attivo" : state.isSweepActive ? "Sweep attivo" : "Tono attivo");
+  updateButtonState();
+}
+
+function stopTone() {
+  stopSweep();
+
+  if (!audio.context || !audio.masterGainNode) {
+    state.isPlaying = false;
+    updateStatus("Pronto");
+    updateButtonState();
+    return;
+  }
+
+  clearScheduledSourceChanges();
+
+  const sourceToStop = audio.sourceNode;
+  const now = audio.context.currentTime;
+  audio.masterGainNode.gain.cancelScheduledValues(now);
+  audio.masterGainNode.gain.setValueAtTime(audio.masterGainNode.gain.value, now);
+  audio.masterGainNode.gain.linearRampToValueAtTime(0, now + FADE_TIME);
+
+  audio.stopTimeoutId = window.setTimeout(() => {
+    stopCurrentSource(sourceToStop);
+    audio.stopTimeoutId = null;
+  }, (FADE_TIME + 0.02) * 1000);
+
+  state.isPlaying = false;
+  updateStatus("Pronto");
+  updateButtonState();
+}
+
+function rebuildPlayingSource() {
+  if (!state.isPlaying || !audio.context) {
+    return;
+  }
+
+  clearScheduledSourceChanges();
+
+  const previousSource = audio.sourceNode;
+  const now = audio.context.currentTime;
+  audio.masterGainNode.gain.cancelScheduledValues(now);
+  audio.masterGainNode.gain.setValueAtTime(audio.masterGainNode.gain.value, now);
+  audio.masterGainNode.gain.linearRampToValueAtTime(0, now + FADE_TIME);
+
+  audio.switchTimeoutId = window.setTimeout(async () => {
+    stopCurrentSource(previousSource);
+    await ensureRunningContext();
+    createSource();
+
+    const resumeTime = audio.context.currentTime;
+    audio.masterGainNode.gain.cancelScheduledValues(resumeTime);
+    audio.masterGainNode.gain.setValueAtTime(0, resumeTime);
+    audio.masterGainNode.gain.linearRampToValueAtTime(state.volume, resumeTime + FADE_TIME);
+    audio.switchTimeoutId = null;
+  }, (FADE_TIME + 0.01) * 1000);
+}
+
+function applyFrequencyToAudio(nextFrequency) {
+  if (!audio.context || !audio.sourceNode || audio.sourceKind !== "tone") {
+    return;
+  }
+
+  const now = audio.context.currentTime;
+  audio.sourceNode.frequency.cancelScheduledValues(now);
+  audio.sourceNode.frequency.setTargetAtTime(nextFrequency, now, PARAM_SMOOTHING);
+}
+
+function setFrequency(nextFrequency) {
+  state.frequency = clamp(nextFrequency, MIN_FREQUENCY, MAX_FREQUENCY);
+  updateFrequencyUI();
+  applyFrequencyToAudio(state.frequency);
+}
+
+function setVolume(nextVolume) {
+  state.volume = clamp(nextVolume, 0, 1);
+  updateVolumeUI();
+
+  if (!audio.context || !audio.masterGainNode) {
+    return;
+  }
+
+  setAudioParamSmoothly(audio.masterGainNode.gain, state.isPlaying ? state.volume : 0);
+}
+
 function applyChannelRouting() {
   if (!audio.leftGainNode || !audio.rightGainNode) {
     return;
@@ -173,123 +421,37 @@ function applyChannelRouting() {
   setAudioParamSmoothly(audio.rightGainNode.gain, gains.right);
 }
 
-function ensureAudioGraph() {
-  if (audio.context) {
-    return;
-  }
-
-  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-  audio.context = new AudioContextClass();
-  audio.gainNode = audio.context.createGain();
-  audio.leftGainNode = audio.context.createGain();
-  audio.rightGainNode = audio.context.createGain();
-  audio.mergerNode = audio.context.createChannelMerger(2);
-
-  audio.gainNode.gain.value = 0;
-  audio.leftGainNode.gain.value = 1;
-  audio.rightGainNode.gain.value = 1;
-
-  audio.gainNode.connect(audio.leftGainNode);
-  audio.gainNode.connect(audio.rightGainNode);
-  audio.leftGainNode.connect(audio.mergerNode, 0, 0);
-  audio.rightGainNode.connect(audio.mergerNode, 0, 1);
-  audio.mergerNode.connect(audio.context.destination);
-
+function setChannel(nextChannel) {
+  state.channel = nextChannel;
+  updateChannelUI();
   applyChannelRouting();
-}
-
-function createOscillator() {
-  const oscillator = audio.context.createOscillator();
-  oscillator.type = state.waveform;
-  oscillator.frequency.value = state.frequency;
-  oscillator.connect(audio.gainNode);
-  oscillator.start();
-  audio.oscillator = oscillator;
-}
-
-async function startTone() {
-  ensureAudioGraph();
-
-  if (audio.context.state !== "running") {
-    await audio.context.resume();
-  }
-
-  if (!audio.oscillator) {
-    createOscillator();
-  }
-
-  const now = audio.context.currentTime;
-  audio.gainNode.gain.cancelScheduledValues(now);
-  audio.gainNode.gain.setValueAtTime(audio.gainNode.gain.value, now);
-  audio.gainNode.gain.linearRampToValueAtTime(state.volume, now + FADE_TIME);
-
-  state.isPlaying = true;
-  updateStatus(state.isSweepActive ? "Sweep attivo" : "Tono attivo");
-  updateButtonState();
-}
-
-function stopTone() {
-  stopSweep();
-
-  if (!audio.context || !audio.gainNode) {
-    state.isPlaying = false;
-    updateStatus("Pronto");
-    updateButtonState();
-    return;
-  }
-
-  const now = audio.context.currentTime;
-  audio.gainNode.gain.cancelScheduledValues(now);
-  audio.gainNode.gain.setValueAtTime(audio.gainNode.gain.value, now);
-  audio.gainNode.gain.linearRampToValueAtTime(0, now + FADE_TIME);
-
-  state.isPlaying = false;
-  updateStatus("Pronto");
-  updateButtonState();
-}
-
-function applyFrequencyToAudio(nextFrequency) {
-  if (!audio.context || !audio.oscillator) {
-    return;
-  }
-
-  const now = audio.context.currentTime;
-  audio.oscillator.frequency.cancelScheduledValues(now);
-  audio.oscillator.frequency.setTargetAtTime(nextFrequency, now, PARAM_SMOOTHING);
-}
-
-function setFrequency(nextFrequency, options = {}) {
-  const clampedFrequency = clamp(nextFrequency, MIN_FREQUENCY, MAX_FREQUENCY);
-  state.frequency = clampedFrequency;
-  updateFrequencyUI();
-
-  if (!options.silentAudioUpdate) {
-    applyFrequencyToAudio(clampedFrequency);
-  }
 }
 
 function setWaveform(nextWaveform) {
+  const wasNoise = isNoiseMode();
   state.waveform = nextWaveform;
-  if (audio.oscillator) {
-    audio.oscillator.type = nextWaveform;
+  const isNowNoise = isNoiseMode();
+
+  if (isNowNoise && state.isSweepActive) {
+    stopSweep();
   }
-}
 
-function setVolume(nextVolume) {
-  state.volume = clamp(nextVolume, 0, 1);
-  updateVolumeUI();
+  updateFrequencyUI();
+  updateModeUI();
+  updateButtonState();
 
-  if (!audio.context || !audio.gainNode) {
+  if (!state.isPlaying || !audio.sourceNode) {
     return;
   }
 
-  const target = state.isPlaying ? state.volume : 0;
-  setAudioParamSmoothly(audio.gainNode.gain, target);
-}
+  if (!wasNoise && !isNowNoise && audio.sourceKind === "tone") {
+    audio.sourceNode.type = nextWaveform;
+    updateStatus("Tono attivo");
+    return;
+  }
 
-function setChannel(nextChannel) {
-  state.channel = nextChannel;
-  applyChannelRouting();
+  rebuildPlayingSource();
+  updateStatus(isNowNoise ? "Noise attivo" : "Tono attivo");
 }
 
 function stopSweep() {
@@ -312,10 +474,8 @@ function readSweepInputs() {
   state.sweep.end = parseFrequency(elements.sweepEndInput.value, state.sweep.end);
   state.sweep.speed = parseSweepSpeed(elements.sweepSpeedInput.value, state.sweep.speed);
   state.sweep.direction = elements.sweepDirectionSelect.value;
-
   state.sweep.min = Math.min(state.sweep.start, state.sweep.end);
   state.sweep.max = Math.max(state.sweep.start, state.sweep.end);
-
   updateSweepUI();
 }
 
@@ -368,6 +528,10 @@ function advanceSweep(timestamp) {
 }
 
 async function startSweep() {
+  if (isNoiseMode()) {
+    return;
+  }
+
   readSweepInputs();
   stopSweep();
 
@@ -402,9 +566,8 @@ async function startSweep() {
     return;
   }
 
-  await startTone();
-
   state.isSweepActive = true;
+  await startTone();
   sweepState.lastTimestamp = 0;
   updateStatus("Sweep attivo");
   updateButtonState();
@@ -421,6 +584,10 @@ function holdSweep() {
 }
 
 function applyManualFrequency(nextFrequency) {
+  if (isNoiseMode()) {
+    return;
+  }
+
   stopSweep();
   setFrequency(nextFrequency);
 }
@@ -446,10 +613,16 @@ function bindPressAndHold(button, direction) {
   };
 
   button.addEventListener("pointerdown", (event) => {
+    if (button.disabled) {
+      return;
+    }
+
     event.preventDefault();
+
     if (button.setPointerCapture) {
       button.setPointerCapture(event.pointerId);
     }
+
     changeFrequencyByStep(state.step * direction);
 
     holdTimeoutId = window.setTimeout(() => {
@@ -464,9 +637,23 @@ function bindPressAndHold(button, direction) {
   });
 }
 
+function bindAudioUnlock() {
+  const unlockAudio = () => {
+    if (!audio.context || audio.context.state === "running") {
+      return;
+    }
+
+    audio.context.resume().catch(() => {});
+  };
+
+  ["touchend", "pointerup", "click"].forEach((eventName) => {
+    document.addEventListener(eventName, unlockAudio, { passive: true });
+  });
+}
+
 function bindEvents() {
   elements.startButton.addEventListener("click", () => {
-    startTone().catch(() => updateStatus("Impossibile avviare l'audio"));
+    startTone().catch(() => updateStatus("Audio non disponibile"));
   });
 
   elements.stopButton.addEventListener("click", () => {
@@ -477,13 +664,16 @@ function bindEvents() {
     setWaveform(event.target.value);
   });
 
-  elements.channelSelect.addEventListener("change", (event) => {
-    setChannel(event.target.value);
+  elements.volumeInput.addEventListener("input", (event) => {
+    setVolume(Number(event.target.value) / 100);
   });
 
-  elements.volumeInput.addEventListener("input", (event) => {
-    const volume = Number(event.target.value) / 100;
-    setVolume(volume);
+  elements.channelInputs.forEach((input) => {
+    input.addEventListener("change", (event) => {
+      if (event.target.checked) {
+        setChannel(event.target.value);
+      }
+    });
   });
 
   elements.stepSelect.addEventListener("change", (event) => {
@@ -502,8 +692,15 @@ function bindEvents() {
     elements.frequencyInput.value = String(Number(state.frequency.toFixed(2)));
   });
 
+  [elements.sweepStartInput, elements.sweepEndInput, elements.sweepSpeedInput].forEach((input) => {
+    input.addEventListener("change", readSweepInputs);
+    input.addEventListener("blur", readSweepInputs);
+  });
+
+  elements.sweepDirectionSelect.addEventListener("change", readSweepInputs);
+
   elements.startSweepButton.addEventListener("click", () => {
-    startSweep().catch(() => updateStatus("Impossibile avviare lo sweep"));
+    startSweep().catch(() => updateStatus("Sweep non disponibile"));
   });
 
   elements.stopSweepButton.addEventListener("click", () => {
@@ -514,35 +711,8 @@ function bindEvents() {
     holdSweep();
   });
 
-  [elements.sweepStartInput, elements.sweepEndInput, elements.sweepSpeedInput].forEach((input) => {
-    input.addEventListener("change", readSweepInputs);
-    input.addEventListener("blur", readSweepInputs);
-  });
-
-  elements.sweepDirectionSelect.addEventListener("change", readSweepInputs);
-
-  elements.presetButtons.forEach((button) => {
-    button.addEventListener("click", () => {
-      applyManualFrequency(parseFrequency(button.dataset.frequency));
-    });
-  });
-
   bindPressAndHold(elements.decreaseButton, -1);
   bindPressAndHold(elements.increaseButton, 1);
-}
-
-function bindAudioUnlock() {
-  const unlockAudio = () => {
-    if (!audio.context || audio.context.state === "running") {
-      return;
-    }
-
-    audio.context.resume().catch(() => {});
-  };
-
-  ["touchend", "pointerup", "click"].forEach((eventName) => {
-    document.addEventListener(eventName, unlockAudio, { passive: true });
-  });
 }
 
 function init() {

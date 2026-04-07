@@ -8,84 +8,80 @@
     />
     <meta
       name="description"
-      content="Generatore di toni audio di test mobile-first con Web Audio API."
+      content="Generatore audio minimale mobile-first con toni, noise, sweep e routing Left/Right/Stereo."
     />
     <title>Tone Generator</title>
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
     <main class="app-shell">
-      <header class="hero">
-        <div>
-          <p class="eyebrow">Web Audio API</p>
-          <h1>Tone Generator</h1>
-        </div>
-        <p class="hero-copy">
-          Genera toni di test continui direttamente nel browser, con sweep,
-          preset rapidi e selezione canale.
-        </p>
-      </header>
-
-      <section class="panel panel-primary" aria-labelledby="main-controls-title">
+      <section class="panel panel-main">
         <div class="panel-head">
-          <h2 id="main-controls-title">Controllo principale</h2>
+          <h1>Tone Generator</h1>
           <p id="statusText" class="status">Pronto</p>
         </div>
 
-        <div class="frequency-display" aria-live="polite">
+        <div class="display" aria-live="polite">
           <span id="frequencyValue">440</span>
-          <span class="frequency-unit">Hz</span>
+          <span id="frequencyUnit" class="display-unit">Hz</span>
         </div>
 
         <div class="button-row">
-          <button id="startButton" class="btn btn-accent" type="button">
-            Start
-          </button>
-          <button id="stopButton" class="btn btn-secondary" type="button">
-            Stop
-          </button>
+          <button id="startButton" class="btn btn-primary" type="button">Start</button>
+          <button id="stopButton" class="btn btn-secondary" type="button">Stop</button>
         </div>
 
         <div class="control-grid">
           <label class="field">
-            <span>Forma d'onda</span>
+            <span>Sorgente</span>
             <select id="waveformSelect">
               <option value="sine">sine</option>
               <option value="square">square</option>
               <option value="triangle">triangle</option>
               <option value="sawtooth">sawtooth</option>
+              <option value="noise">noise</option>
             </select>
           </label>
 
           <label class="field">
-            <span>Canale</span>
-            <select id="channelSelect">
-              <option value="stereo">Stereo</option>
-              <option value="left">Left</option>
-              <option value="right">Right</option>
-            </select>
+            <span>Volume</span>
+            <div class="range-row">
+              <input
+                id="volumeInput"
+                type="range"
+                min="0"
+                max="100"
+                step="1"
+                value="10"
+              />
+              <output id="volumeValue" for="volumeInput">10%</output>
+            </div>
           </label>
         </div>
 
-        <label class="field volume-field">
-          <span>Volume</span>
-          <div class="range-row">
-            <input
-              id="volumeInput"
-              type="range"
-              min="0"
-              max="100"
-              step="1"
-              value="10"
-            />
-            <output id="volumeValue" for="volumeInput">10%</output>
+        <fieldset class="field channel-field">
+          <legend>Canale</legend>
+          <div id="channelGroup" class="channel-group" role="radiogroup" aria-label="Canale di uscita">
+            <label class="channel-option">
+              <input type="radio" name="channel" value="left" />
+              <span>◀</span>
+            </label>
+            <label class="channel-option">
+              <input type="radio" name="channel" value="stereo" checked />
+              <span>●</span>
+            </label>
+            <label class="channel-option">
+              <input type="radio" name="channel" value="right" />
+              <span>▶</span>
+            </label>
           </div>
-        </label>
+        </fieldset>
       </section>
 
-      <section class="panel" aria-labelledby="frequency-controls-title">
+      <section id="frequencyPanel" class="panel">
         <div class="panel-head">
-          <h2 id="frequency-controls-title">Regolazione frequenza</h2>
+          <h2>Frequency</h2>
+          <span class="panel-note">1-22000 Hz</span>
         </div>
 
         <div class="stepper-row">
@@ -93,7 +89,7 @@
             -
           </button>
           <label class="field field-grow">
-            <span>Frequenza</span>
+            <span>Hz</span>
             <input
               id="frequencyInput"
               type="number"
@@ -122,14 +118,15 @@
         </label>
       </section>
 
-      <section class="panel" aria-labelledby="sweep-controls-title">
+      <section id="sweepPanel" class="panel">
         <div class="panel-head">
-          <h2 id="sweep-controls-title">Sweep</h2>
+          <h2>Sweep</h2>
+          <span class="panel-note">Hz/s</span>
         </div>
 
-        <div class="control-grid">
+        <div class="control-grid compact-grid">
           <label class="field">
-            <span>Frequenza iniziale</span>
+            <span>Start</span>
             <input
               id="sweepStartInput"
               type="number"
@@ -142,7 +139,7 @@
           </label>
 
           <label class="field">
-            <span>Frequenza finale</span>
+            <span>End</span>
             <input
               id="sweepEndInput"
               type="number"
@@ -155,7 +152,7 @@
           </label>
 
           <label class="field">
-            <span>Velocità sweep (Hz/s)</span>
+            <span>Speed</span>
             <input
               id="sweepSpeedInput"
               type="number"
@@ -168,7 +165,7 @@
           </label>
 
           <label class="field">
-            <span>Direzione</span>
+            <span>Mode</span>
             <select id="sweepDirectionSelect">
               <option value="up">up</option>
               <option value="down">down</option>
@@ -177,31 +174,10 @@
           </label>
         </div>
 
-        <div class="button-row button-row-sweep">
-          <button id="startSweepButton" class="btn btn-accent" type="button">
-            Start Sweep
-          </button>
-          <button id="stopSweepButton" class="btn btn-secondary" type="button">
-            Stop Sweep
-          </button>
-          <button id="holdButton" class="btn btn-ghost" type="button">Hold</button>
-        </div>
-      </section>
-
-      <section class="panel" aria-labelledby="preset-title">
-        <div class="panel-head">
-          <h2 id="preset-title">Preset rapidi</h2>
-        </div>
-
-        <div class="preset-grid">
-          <button class="btn btn-preset" type="button" data-frequency="20">20 Hz</button>
-          <button class="btn btn-preset" type="button" data-frequency="50">50 Hz</button>
-          <button class="btn btn-preset" type="button" data-frequency="60">60 Hz</button>
-          <button class="btn btn-preset" type="button" data-frequency="100">100 Hz</button>
-          <button class="btn btn-preset" type="button" data-frequency="440">440 Hz</button>
-          <button class="btn btn-preset" type="button" data-frequency="1000">1000 Hz</button>
-          <button class="btn btn-preset" type="button" data-frequency="5000">5000 Hz</button>
-          <button class="btn btn-preset" type="button" data-frequency="10000">10000 Hz</button>
+        <div class="button-row button-row-triple">
+          <button id="startSweepButton" class="btn btn-primary" type="button">Sweep</button>
+          <button id="stopSweepButton" class="btn btn-secondary" type="button">Stop</button>
+          <button id="holdButton" class="btn btn-muted" type="button">Hold</button>
         </div>
       </section>
     </main>
