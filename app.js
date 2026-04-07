@@ -63,13 +63,11 @@ const elements = {
   decreaseButton: document.getElementById("decreaseButton"),
   increaseButton: document.getElementById("increaseButton"),
   sweepSpeedSlider: document.getElementById("sweepSpeedSlider"),
-  sweepSpeedValue: document.getElementById("sweepSpeedValue"),
   sweepStartSlider: document.getElementById("sweepStartSlider"),
   sweepEndSlider: document.getElementById("sweepEndSlider"),
+  sweepStartBadge: document.getElementById("sweepStartBadge"),
+  sweepEndBadge: document.getElementById("sweepEndBadge"),
   sweepRangeFill: document.getElementById("sweepRangeFill"),
-  sweepRangeValue: document.getElementById("sweepRangeValue"),
-  sweepStartValue: document.getElementById("sweepStartValue"),
-  sweepEndValue: document.getElementById("sweepEndValue"),
   startSweepButton: document.getElementById("startSweepButton"),
   stopSweepButton: document.getElementById("stopSweepButton"),
   holdButton: document.getElementById("holdButton"),
@@ -234,22 +232,27 @@ function updateVolumeUI() {
 
 function updateSweepUI() {
   elements.sweepSpeedSlider.value = String(sweepSpeedToSliderValue(state.sweep.speed));
-  elements.sweepSpeedValue.textContent = `${formatSpeed(state.sweep.speed)} Hz/s`;
   elements.sweepStartSlider.value = String(frequencyToSliderValue(state.sweep.start));
   elements.sweepEndSlider.value = String(frequencyToSliderValue(state.sweep.end));
-  elements.sweepStartValue.textContent = `${formatFrequency(state.sweep.start)} Hz`;
-  elements.sweepEndValue.textContent = `${formatFrequency(state.sweep.end)} Hz`;
+
   const startSliderValue = Number(elements.sweepStartSlider.value);
   const endSliderValue = Number(elements.sweepEndSlider.value);
   const left = (Math.min(startSliderValue, endSliderValue) / FREQUENCY_SLIDER_MAX) * 100;
   const width = (Math.abs(endSliderValue - startSliderValue) / FREQUENCY_SLIDER_MAX) * 100;
+  const startLeft = (startSliderValue / FREQUENCY_SLIDER_MAX) * 100;
+  const endLeft = (endSliderValue / FREQUENCY_SLIDER_MAX) * 100;
+  const isOverlap = Math.abs(endSliderValue - startSliderValue) < 120;
 
   elements.sweepRangeFill.style.left = `${left}%`;
   elements.sweepRangeFill.style.width = `${Math.max(width, 0.8)}%`;
   elements.sweepStartSlider.style.zIndex = startSliderValue <= endSliderValue ? "2" : "3";
   elements.sweepEndSlider.style.zIndex = endSliderValue < startSliderValue ? "2" : "3";
-  elements.sweepRangeValue.textContent =
-    `${formatFrequency(state.sweep.start)} → ${formatFrequency(state.sweep.end)} Hz`;
+  elements.sweepStartBadge.textContent = formatFrequency(state.sweep.start);
+  elements.sweepEndBadge.textContent = formatFrequency(state.sweep.end);
+  elements.sweepStartBadge.style.left = `${startLeft}%`;
+  elements.sweepEndBadge.style.left = `${endLeft}%`;
+  elements.sweepStartBadge.classList.toggle("is-overlap", isOverlap);
+  elements.sweepEndBadge.classList.toggle("is-overlap", isOverlap);
 }
 
 function updateWaveformUI() {

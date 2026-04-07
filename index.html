@@ -164,15 +164,11 @@
       <section id="sweepPanel" class="panel">
         <div class="panel-head">
           <h2>Sweep</h2>
-          <span class="panel-note">log</span>
         </div>
 
         <div class="sweep-visual-grid">
           <label class="field">
-            <div class="field-inline">
-              <span>Speed</span>
-              <output id="sweepSpeedValue" for="sweepSpeedSlider">100 Hz/s</output>
-            </div>
+            <span>Speed</span>
             <input
               id="sweepSpeedSlider"
               type="range"
@@ -184,17 +180,9 @@
           </label>
 
           <div class="field sweep-range-field">
-            <div class="field-inline">
-              <span>Start</span>
-              <output id="sweepStartValue" for="sweepStartSlider">20 Hz</output>
-            </div>
-
-            <div class="field-inline">
-              <span>End</span>
-              <output id="sweepEndValue" for="sweepEndSlider">1000 Hz</output>
-            </div>
-
             <div class="dual-range">
+              <div id="sweepStartBadge" class="range-badge range-badge-start">20</div>
+              <div id="sweepEndBadge" class="range-badge range-badge-end">1000</div>
               <div id="sweepRangeFill" class="dual-range-fill"></div>
               <input
                 id="sweepStartSlider"
@@ -215,10 +203,6 @@
                 value="638"
               />
             </div>
-
-            <output id="sweepRangeValue" class="range-summary" for="sweepStartSlider sweepEndSlider">
-              20 → 1000 Hz
-            </output>
           </div>
         </div>
 

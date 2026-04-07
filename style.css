@@ -336,10 +336,6 @@ legend {
   gap: 8px;
 }
 
-.range-summary {
-  color: var(--muted);
-}
-
 .btn {
   min-height: 48px;
   padding: 0 14px;
@@ -578,7 +574,8 @@ input[type="range"]::-moz-range-thumb {
 
 .dual-range {
   position: relative;
-  height: 32px;
+  height: 64px;
+  padding-top: 26px;
 }
 
 .dual-range::before {
@@ -586,7 +583,7 @@ input[type="range"]::-moz-range-thumb {
   position: absolute;
   left: 0;
   right: 0;
-  top: 12px;
+  top: 38px;
   height: 10px;
   border-radius: 999px;
   background: linear-gradient(180deg, rgba(20, 32, 39, 0.08), rgba(20, 32, 39, 0.14));
@@ -595,7 +592,7 @@ input[type="range"]::-moz-range-thumb {
 
 .dual-range-fill {
   position: absolute;
-  top: 12px;
+  top: 38px;
   height: 10px;
   border-radius: 999px;
   background: linear-gradient(90deg, rgba(17, 117, 108, 0.18), rgba(224, 122, 95, 0.2));
@@ -604,9 +601,40 @@ input[type="range"]::-moz-range-thumb {
 
 .dual-range input {
   position: absolute;
-  inset: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   margin: 0;
   pointer-events: none;
+}
+
+.range-badge {
+  position: absolute;
+  top: 0;
+  min-width: 58px;
+  padding: 4px 8px;
+  border: 1px solid rgba(18, 32, 39, 0.08);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.94);
+  color: var(--text);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
+  transform: translateX(-50%);
+  box-shadow: var(--shadow-soft);
+  pointer-events: none;
+  transition: left 120ms ease, transform 120ms ease, min-width 120ms ease;
+}
+
+.range-badge.is-overlap.range-badge-start {
+  transform: translateX(calc(-50% - 26px));
+  min-width: 68px;
+}
+
+.range-badge.is-overlap.range-badge-end {
+  transform: translateX(calc(-50% + 26px));
+  min-width: 68px;
 }
 
 .dual-range input::-webkit-slider-runnable-track {
