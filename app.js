@@ -8,13 +8,18 @@ const HOLD_DELAY_MS = 320;
 const HOLD_INTERVAL_MS = 90;
 const NOISE_BUFFER_SECONDS = 2;
 const FREQUENCY_SLIDER_MAX = 1000;
+const MANUAL_FREQUENCY_STEP = 1;
+const PULL_TO_REFRESH_THRESHOLD = 110;
+const PLAY_ICON_MARKUP =
+  '<svg viewBox="0 0 32 32" focusable="false" aria-hidden="true"><path d="M11 8.5L23 16L11 23.5Z"/></svg>';
+const STOP_ICON_MARKUP =
+  '<svg viewBox="0 0 32 32" focusable="false" aria-hidden="true"><path d="M10 10H22V22H10Z"/></svg>';
 
 const state = {
   frequency: DEFAULT_FREQUENCY,
   volume: DEFAULT_VOLUME,
   waveform: "sine",
   channel: "stereo",
-  step: 10,
   isPlaying: false,
   isSweepActive: false,
   sweep: {
@@ -47,10 +52,15 @@ const sweepState = {
   progress: 0,
 };
 
+const refreshGesture = {
+  active: false,
+  startX: 0,
+  startY: 0,
+};
+
 const elements = {
   frequencyInput: document.getElementById("frequencyInput"),
   frequencySlider: document.getElementById("frequencySlider"),
-  stepSelect: document.getElementById("stepSelect"),
   powerButton: document.getElementById("powerButton"),
   powerIcon: document.getElementById("powerIcon"),
   volumeInput: document.getElementById("volumeInput"),
@@ -170,6 +180,7 @@ function updateFrequencyUI() {
 function updateVolumeUI() {
   const volumePercentage = Math.round(state.volume * 100);
   elements.volumeInput.value = String(volumePercentage);
+  elements.volumeInput.style.setProperty("--volume-progress", `${volumePercentage}%`);
 }
 
 function updateSweepUI() {
@@ -219,7 +230,6 @@ function updateModeUI() {
 
   [
     elements.frequencyInput,
-    elements.stepSelect,
     elements.frequencySlider,
     elements.decreaseButton,
     elements.increaseButton,
@@ -242,7 +252,7 @@ function updateButtonState() {
     "aria-label",
     state.isPlaying ? "Ferma audio" : "Avvia audio",
   );
-  elements.powerIcon.textContent = state.isPlaying ? "■" : "▶";
+  elements.powerIcon.innerHTML = state.isPlaying ? STOP_ICON_MARKUP : PLAY_ICON_MARKUP;
   elements.startSweepButton.disabled = disabledForNoise || state.isSweepActive;
   elements.stopSweepButton.disabled = disabledForNoise || !state.isSweepActive;
 }
@@ -648,6 +658,53 @@ function changeFrequencyByStep(stepDelta) {
   applyManualFrequency(state.frequency + stepDelta);
 }
 
+function bindPullToRefresh() {
+  const interactiveSelector = 'button, input, select, textarea, .dual-range';
+
+  document.addEventListener(
+    "touchstart",
+    (event) => {
+      const firstTouch = event.touches[0];
+      const isInteractive = event.target.closest(interactiveSelector);
+
+      refreshGesture.active =
+        Boolean(firstTouch) && window.scrollY <= 2 && !isInteractive;
+
+      if (!refreshGesture.active) {
+        return;
+      }
+
+      refreshGesture.startX = firstTouch.clientX;
+      refreshGesture.startY = firstTouch.clientY;
+    },
+    { passive: true },
+  );
+
+  document.addEventListener(
+    "touchend",
+    (event) => {
+      if (!refreshGesture.active) {
+        return;
+      }
+
+      const changedTouch = event.changedTouches[0];
+      refreshGesture.active = false;
+
+      if (!changedTouch) {
+        return;
+      }
+
+      const deltaY = changedTouch.clientY - refreshGesture.startY;
+      const deltaX = Math.abs(changedTouch.clientX - refreshGesture.startX);
+
+      if (deltaY >= PULL_TO_REFRESH_THRESHOLD && deltaX < 70) {
+        window.location.reload();
+      }
+    },
+    { passive: true },
+  );
+}
+
 function bindPressAndHold(button, direction) {
   let holdTimeoutId = null;
   let repeatIntervalId = null;
@@ -675,11 +732,11 @@ function bindPressAndHold(button, direction) {
       button.setPointerCapture(event.pointerId);
     }
 
-    changeFrequencyByStep(state.step * direction);
+    changeFrequencyByStep(MANUAL_FREQUENCY_STEP * direction);
 
     holdTimeoutId = window.setTimeout(() => {
       repeatIntervalId = window.setInterval(() => {
-        changeFrequencyByStep(state.step * direction);
+        changeFrequencyByStep(MANUAL_FREQUENCY_STEP * direction);
       }, HOLD_INTERVAL_MS);
     }, HOLD_DELAY_MS);
   });
@@ -731,10 +788,6 @@ function bindEvents() {
         setChannel(event.target.value);
       }
     });
-  });
-
-  elements.stepSelect.addEventListener("change", (event) => {
-    state.step = Number(event.target.value);
   });
 
   elements.frequencyInput.addEventListener("input", (event) => {
@@ -798,6 +851,7 @@ function init() {
   syncAllUI();
   updateStatus("Pronto");
   bindAudioUnlock();
+  bindPullToRefresh();
   bindEvents();
 }
 

@@ -10,7 +10,7 @@
       name="description"
       content="Generatore audio minimale mobile-first con toni, noise, sweep e routing Left/Right/Stereo."
     />
-    <meta name="theme-color" content="#11756c" />
+    <meta name="theme-color" content="#ffd54f" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <link rel="icon" href="icon.svg" type="image/svg+xml" />
@@ -55,7 +55,7 @@
                   min="20"
                   max="22000"
                   step="1"
-                  inputmode="decimal"
+                  inputmode="numeric"
                   value="440"
                 />
                 <span class="frequency-edit-unit">Hz</span>
@@ -65,18 +65,6 @@
               +
             </button>
           </div>
-
-          <label class="field field-step field-step-main">
-            <span class="sr-only">Step</span>
-            <select id="stepSelect">
-              <option value="1">1 Hz</option>
-              <option value="5">5 Hz</option>
-              <option value="10" selected>10 Hz</option>
-              <option value="50">50 Hz</option>
-              <option value="100">100 Hz</option>
-              <option value="1000">1000 Hz</option>
-            </select>
-          </label>
         </div>
 
         <label class="field frequency-slider-field">
@@ -160,7 +148,11 @@
         </label>
 
         <button id="powerButton" class="btn btn-primary btn-power btn-power-large" type="button" aria-label="Avvia o ferma audio">
-          <span id="powerIcon" class="power-icon" aria-hidden="true">▶</span>
+          <span id="powerIcon" class="power-icon" aria-hidden="true">
+            <svg viewBox="0 0 32 32" focusable="false" aria-hidden="true">
+              <path d="M11 8.5L23 16L11 23.5Z" />
+            </svg>
+          </span>
         </button>
       </section>
 

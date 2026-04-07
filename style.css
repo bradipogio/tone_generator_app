@@ -219,6 +219,7 @@ legend {
 }
 
 .frequency-grid-main {
+  grid-template-columns: 1fr;
   margin: 10px 0 8px;
 }
 
@@ -275,18 +276,6 @@ legend {
 
 .field-grow {
   min-width: 0;
-}
-
-.field-step select {
-  min-height: 44px;
-}
-
-.field-step-main select {
-  min-height: 54px;
-  padding-inline: 12px 34px;
-  font-size: 0.95rem;
-  font-weight: 700;
-  border-radius: 18px;
 }
 
 .frequency-slider-field {
@@ -403,8 +392,14 @@ legend {
   display: inline-grid;
   place-items: center;
   width: 100%;
-  font-size: 1.8rem;
   line-height: 1;
+}
+
+.power-icon svg {
+  width: 34px;
+  height: 34px;
+  fill: currentColor;
+  display: block;
 }
 
 .channel-group {
@@ -630,6 +625,7 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .volume-slider {
+  --volume-progress: 10%;
   position: relative;
   min-height: 42px;
 }
@@ -638,7 +634,13 @@ input[type="range"]::-moz-range-thumb {
   height: 22px;
   border-radius: 999px;
   background:
-    linear-gradient(90deg, rgba(255, 213, 79, 0.08) 0%, rgba(255, 213, 79, 0.24) 100%),
+    linear-gradient(
+      90deg,
+      var(--primary) 0%,
+      var(--primary) var(--volume-progress),
+      rgba(255, 213, 79, 0.1) var(--volume-progress),
+      rgba(255, 213, 79, 0.1) 100%
+    ),
     linear-gradient(180deg, rgba(255, 213, 79, 0.04), rgba(255, 213, 79, 0.14));
   clip-path: polygon(0 50%, 12% 20%, 100% 0, 100% 100%, 12% 80%);
 }
@@ -647,7 +649,13 @@ input[type="range"]::-moz-range-thumb {
   height: 22px;
   border-radius: 999px;
   background:
-    linear-gradient(90deg, rgba(255, 213, 79, 0.08) 0%, rgba(255, 213, 79, 0.24) 100%),
+    linear-gradient(
+      90deg,
+      var(--primary) 0%,
+      var(--primary) var(--volume-progress),
+      rgba(255, 213, 79, 0.1) var(--volume-progress),
+      rgba(255, 213, 79, 0.1) 100%
+    ),
     linear-gradient(180deg, rgba(255, 213, 79, 0.04), rgba(255, 213, 79, 0.14));
 }
 
@@ -826,7 +834,7 @@ input[type="range"]::-moz-range-thumb {
   }
 
   .frequency-grid {
-    grid-template-columns: minmax(0, 1fr) 126px;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .btn-power-large {
