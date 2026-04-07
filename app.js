@@ -30,18 +30,14 @@ const audio = {
   context: null,
   oscillator: null,
   gainNode: null,
-  pannerNode: null,
+  mergerNode: null,
+  leftGainNode: null,
+  rightGainNode: null,
 };
 
 const sweepState = {
   frameId: null,
   lastTimestamp: 0,
-};
-
-const channelPanMap = {
-  left: -1,
-  stereo: 0,
-  right: 1,
 };
 
 const elements = {
@@ -145,6 +141,38 @@ function syncAllUI() {
   updateButtonState();
 }
 
+function setAudioParamSmoothly(audioParam, value, timeConstant = PARAM_SMOOTHING) {
+  if (!audio.context || !audioParam) {
+    return;
+  }
+
+  const now = audio.context.currentTime;
+  audioParam.cancelScheduledValues(now);
+  audioParam.setTargetAtTime(value, now, timeConstant);
+}
+
+function getChannelGains(channel) {
+  if (channel === "left") {
+    return { left: 1, right: 0 };
+  }
+
+  if (channel === "right") {
+    return { left: 0, right: 1 };
+  }
+
+  return { left: 1, right: 1 };
+}
+
+function applyChannelRouting() {
+  if (!audio.leftGainNode || !audio.rightGainNode) {
+    return;
+  }
+
+  const gains = getChannelGains(state.channel);
+  setAudioParamSmoothly(audio.leftGainNode.gain, gains.left);
+  setAudioParamSmoothly(audio.rightGainNode.gain, gains.right);
+}
+
 function ensureAudioGraph() {
   if (audio.context) {
     return;
@@ -153,13 +181,21 @@ function ensureAudioGraph() {
   const AudioContextClass = window.AudioContext || window.webkitAudioContext;
   audio.context = new AudioContextClass();
   audio.gainNode = audio.context.createGain();
-  audio.pannerNode = audio.context.createStereoPanner();
+  audio.leftGainNode = audio.context.createGain();
+  audio.rightGainNode = audio.context.createGain();
+  audio.mergerNode = audio.context.createChannelMerger(2);
 
   audio.gainNode.gain.value = 0;
-  audio.pannerNode.pan.value = channelPanMap[state.channel];
+  audio.leftGainNode.gain.value = 1;
+  audio.rightGainNode.gain.value = 1;
 
-  audio.gainNode.connect(audio.pannerNode);
-  audio.pannerNode.connect(audio.context.destination);
+  audio.gainNode.connect(audio.leftGainNode);
+  audio.gainNode.connect(audio.rightGainNode);
+  audio.leftGainNode.connect(audio.mergerNode, 0, 0);
+  audio.rightGainNode.connect(audio.mergerNode, 0, 1);
+  audio.mergerNode.connect(audio.context.destination);
+
+  applyChannelRouting();
 }
 
 function createOscillator() {
@@ -174,7 +210,7 @@ function createOscillator() {
 async function startTone() {
   ensureAudioGraph();
 
-  if (audio.context.state === "suspended") {
+  if (audio.context.state !== "running") {
     await audio.context.resume();
   }
 
@@ -247,22 +283,13 @@ function setVolume(nextVolume) {
     return;
   }
 
-  const now = audio.context.currentTime;
   const target = state.isPlaying ? state.volume : 0;
-  audio.gainNode.gain.cancelScheduledValues(now);
-  audio.gainNode.gain.setTargetAtTime(target, now, PARAM_SMOOTHING);
+  setAudioParamSmoothly(audio.gainNode.gain, target);
 }
 
 function setChannel(nextChannel) {
   state.channel = nextChannel;
-
-  if (!audio.context || !audio.pannerNode) {
-    return;
-  }
-
-  const now = audio.context.currentTime;
-  audio.pannerNode.pan.cancelScheduledValues(now);
-  audio.pannerNode.pan.setTargetAtTime(channelPanMap[nextChannel], now, PARAM_SMOOTHING);
+  applyChannelRouting();
 }
 
 function stopSweep() {
@@ -504,9 +531,24 @@ function bindEvents() {
   bindPressAndHold(elements.increaseButton, 1);
 }
 
+function bindAudioUnlock() {
+  const unlockAudio = () => {
+    if (!audio.context || audio.context.state === "running") {
+      return;
+    }
+
+    audio.context.resume().catch(() => {});
+  };
+
+  ["touchend", "pointerup", "click"].forEach((eventName) => {
+    document.addEventListener(eventName, unlockAudio, { passive: true });
+  });
+}
+
 function init() {
   syncAllUI();
   updateStatus("Pronto");
+  bindAudioUnlock();
   bindEvents();
 }
 
