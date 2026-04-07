@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta
+      name="description"
+      content="Generatore di toni audio di test mobile-first con Web Audio API."
+    />
+    <title>Tone Generator</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">Web Audio API</p>
+          <h1>Tone Generator</h1>
+        </div>
+        <p class="hero-copy">
+          Genera toni di test continui direttamente nel browser, con sweep,
+          preset rapidi e selezione canale.
+        </p>
+      </header>
+
+      <section class="panel panel-primary" aria-labelledby="main-controls-title">
+        <div class="panel-head">
+          <h2 id="main-controls-title">Controllo principale</h2>
+          <p id="statusText" class="status">Pronto</p>
+        </div>
+
+        <div class="frequency-display" aria-live="polite">
+          <span id="frequencyValue">440</span>
+          <span class="frequency-unit">Hz</span>
+        </div>
+
+        <div class="button-row">
+          <button id="startButton" class="btn btn-accent" type="button">
+            Start
+          </button>
+          <button id="stopButton" class="btn btn-secondary" type="button">
+            Stop
+          </button>
+        </div>
+
+        <div class="control-grid">
+          <label class="field">
+            <span>Forma d'onda</span>
+            <select id="waveformSelect">
+              <option value="sine">sine</option>
+              <option value="square">square</option>
+              <option value="triangle">triangle</option>
+              <option value="sawtooth">sawtooth</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>Canale</span>
+            <select id="channelSelect">
+              <option value="stereo">Stereo</option>
+              <option value="left">Left</option>
+              <option value="right">Right</option>
+            </select>
+          </label>
+        </div>
+
+        <label class="field volume-field">
+          <span>Volume</span>
+          <div class="range-row">
+            <input
+              id="volumeInput"
+              type="range"
+              min="0"
+              max="100"
+              step="1"
+              value="10"
+            />
+            <output id="volumeValue" for="volumeInput">10%</output>
+          </div>
+        </label>
+      </section>
+
+      <section class="panel" aria-labelledby="frequency-controls-title">
+        <div class="panel-head">
+          <h2 id="frequency-controls-title">Regolazione frequenza</h2>
+        </div>
+
+        <div class="stepper-row">
+          <button id="decreaseButton" class="btn btn-step" type="button" aria-label="Diminuisci frequenza">
+            -
+          </button>
+          <label class="field field-grow">
+            <span>Frequenza</span>
+            <input
+              id="frequencyInput"
+              type="number"
+              min="1"
+              max="22000"
+              step="1"
+              inputmode="decimal"
+              value="440"
+            />
+          </label>
+          <button id="increaseButton" class="btn btn-step" type="button" aria-label="Aumenta frequenza">
+            +
+          </button>
+        </div>
+
+        <label class="field">
+          <span>Step</span>
+          <select id="stepSelect">
+            <option value="1">1 Hz</option>
+            <option value="5">5 Hz</option>
+            <option value="10" selected>10 Hz</option>
+            <option value="50">50 Hz</option>
+            <option value="100">100 Hz</option>
+            <option value="1000">1000 Hz</option>
+          </select>
+        </label>
+      </section>
+
+      <section class="panel" aria-labelledby="sweep-controls-title">
+        <div class="panel-head">
+          <h2 id="sweep-controls-title">Sweep</h2>
+        </div>
+
+        <div class="control-grid">
+          <label class="field">
+            <span>Frequenza iniziale</span>
+            <input
+              id="sweepStartInput"
+              type="number"
+              min="1"
+              max="22000"
+              step="1"
+              inputmode="decimal"
+              value="20"
+            />
+          </label>
+
+          <label class="field">
+            <span>Frequenza finale</span>
+            <input
+              id="sweepEndInput"
+              type="number"
+              min="1"
+              max="22000"
+              step="1"
+              inputmode="decimal"
+              value="1000"
+            />
+          </label>
+
+          <label class="field">
+            <span>Velocità sweep (Hz/s)</span>
+            <input
+              id="sweepSpeedInput"
+              type="number"
+              min="0.1"
+              max="50000"
+              step="0.1"
+              inputmode="decimal"
+              value="100"
+            />
+          </label>
+
+          <label class="field">
+            <span>Direzione</span>
+            <select id="sweepDirectionSelect">
+              <option value="up">up</option>
+              <option value="down">down</option>
+              <option value="ping-pong">ping-pong</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="button-row button-row-sweep">
+          <button id="startSweepButton" class="btn btn-accent" type="button">
+            Start Sweep
+          </button>
+          <button id="stopSweepButton" class="btn btn-secondary" type="button">
+            Stop Sweep
+          </button>
+          <button id="holdButton" class="btn btn-ghost" type="button">Hold</button>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="preset-title">
+        <div class="panel-head">
+          <h2 id="preset-title">Preset rapidi</h2>
+        </div>
+
+        <div class="preset-grid">
+          <button class="btn btn-preset" type="button" data-frequency="20">20 Hz</button>
+          <button class="btn btn-preset" type="button" data-frequency="50">50 Hz</button>
+          <button class="btn btn-preset" type="button" data-frequency="60">60 Hz</button>
+          <button class="btn btn-preset" type="button" data-frequency="100">100 Hz</button>
+          <button class="btn btn-preset" type="button" data-frequency="440">440 Hz</button>
+          <button class="btn btn-preset" type="button" data-frequency="1000">1000 Hz</button>
+          <button class="btn btn-preset" type="button" data-frequency="5000">5000 Hz</button>
+          <button class="btn btn-preset" type="button" data-frequency="10000">10000 Hz</button>
+        </div>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
