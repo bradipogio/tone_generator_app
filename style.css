@@ -407,7 +407,7 @@ legend {
   min-height: 72px;
   margin-top: 12px;
   border-radius: 22px;
-  border-width: 2px;
+  border-width: 4px;
 }
 
 .power-icon {
@@ -706,8 +706,9 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .volume-row {
+  grid-template-columns: minmax(0, 1fr);
   align-items: center;
-  gap: 12px;
+  gap: 0;
 }
 
 .volume-slider-shell {
@@ -717,6 +718,7 @@ input[type="range"]::-moz-range-thumb {
   border-radius: 999px;
   background: rgba(255, 213, 79, 0.08);
   overflow: hidden;
+  isolation: isolate;
 }
 
 .volume-slider-fill {
@@ -732,6 +734,7 @@ input[type="range"]::-moz-range-thumb {
   inset: 0;
   width: 100%;
   min-height: 38px;
+  z-index: 2;
 }
 
 .volume-slider::-webkit-slider-runnable-track {
@@ -769,6 +772,17 @@ input[type="range"]::-moz-range-thumb {
   width: 38px;
   height: 38px;
   color: var(--primary);
+}
+
+.volume-icon-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  color: #ffffff;
+  mix-blend-mode: difference;
+  pointer-events: none;
 }
 
 .volume-icon svg {
@@ -925,7 +939,7 @@ input[type="range"]::-moz-range-thumb {
 
 .sweep-action-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 96px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
   align-items: end;
   margin-top: 12px;
@@ -933,6 +947,7 @@ input[type="range"]::-moz-range-thumb {
 
 .btn-sweep-toggle {
   min-height: 44px;
+  width: 100%;
 }
 
 @media (min-width: 640px) {
