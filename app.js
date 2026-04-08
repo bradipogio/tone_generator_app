@@ -1237,7 +1237,6 @@ function bindEvents() {
     }
     syncSweepFromSliders();
   });
-  bindInstantRange(elements.sweepStartSlider);
 
   elements.sweepEndSlider.addEventListener("input", () => {
     stopSweep();
@@ -1246,7 +1245,6 @@ function bindEvents() {
     }
     syncSweepFromSliders();
   });
-  bindInstantRange(elements.sweepEndSlider);
 
   bindInstantButton(elements.toggleSweepButton, () => {
     if (state.isSweepActive) {
