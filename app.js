@@ -6,6 +6,7 @@ const FADE_TIME = 0.03;
 const PARAM_SMOOTHING = 0.01;
 const HOLD_DELAY_MS = 320;
 const HOLD_INTERVAL_MS = 90;
+const LONG_PRESS_MENU_DELAY_MS = 1000;
 const NOISE_BUFFER_SECONDS = 2;
 const FREQUENCY_SLIDER_MAX = 1000;
 const MANUAL_FREQUENCY_STEP = 1;
@@ -15,11 +16,32 @@ const PLAY_ICON_MARKUP =
   '<svg viewBox="0 0 32 32" focusable="false" aria-hidden="true"><path d="M11 8.5L23 16L11 23.5Z"/></svg>';
 const STOP_ICON_MARKUP =
   '<svg viewBox="0 0 32 32" focusable="false" aria-hidden="true"><path d="M10 10H22V22H10Z"/></svg>';
+const TONE_WAVEFORMS = new Set(["sine", "square", "triangle", "sawtooth"]);
+const NOISE_WAVEFORMS = new Set(["white-noise", "pink-noise"]);
+const TONE_WAVE_CONFIGS = {
+  sine: {
+    label: "Sinusoide",
+    iconMarkup: '<path d="M2 17 C8 17 8 5 16 5 S24 29 32 29 S40 5 48 5 S56 17 62 17" />',
+  },
+  square: {
+    label: "Quadra",
+    iconMarkup: '<path d="M2 17 H14 V7 H30 V25 H46 V7 H62 V17" />',
+  },
+  triangle: {
+    label: "Triangolo",
+    iconMarkup: '<path d="M2 17 L14 7 L30 29 L46 5 L58 17 L62 17" />',
+  },
+  sawtooth: {
+    label: "Dente",
+    iconMarkup: '<path d="M2 12 L14 24 V4 L34 24 V4 L54 24 V12 H62" />',
+  },
+};
 
 const state = {
   frequency: DEFAULT_FREQUENCY,
   volume: DEFAULT_VOLUME,
   waveform: "sine",
+  toneWaveform: "sine",
   channel: "stereo",
   isPlaying: false,
   isSweepActive: false,
@@ -38,7 +60,8 @@ const audio = {
   context: null,
   sourceNode: null,
   sourceKind: null,
-  noiseBuffer: null,
+  whiteNoiseBuffer: null,
+  pinkNoiseBuffer: null,
   masterGainNode: null,
   mergerNode: null,
   analyserNode: null,
@@ -74,11 +97,16 @@ const elements = {
   sweepStartBadge: document.getElementById("sweepStartBadge"),
   sweepEndBadge: document.getElementById("sweepEndBadge"),
   sweepRangeFill: document.getElementById("sweepRangeFill"),
-  startSweepButton: document.getElementById("startSweepButton"),
-  stopSweepButton: document.getElementById("stopSweepButton"),
+  toggleSweepButton: document.getElementById("toggleSweepButton"),
   frequencyPanel: document.getElementById("frequencyPanel"),
   sweepPanel: document.getElementById("sweepPanel"),
-  waveformInputs: Array.from(document.querySelectorAll('input[name="waveform"]')),
+  wavePicker: document.getElementById("wavePicker"),
+  toneFamilyButton: document.getElementById("toneFamilyButton"),
+  toneFamilyIcon: document.getElementById("toneFamilyIcon"),
+  toneFamilyLabel: document.getElementById("toneFamilyLabel"),
+  toneWaveMenu: document.getElementById("toneWaveMenu"),
+  waveformButtons: Array.from(document.querySelectorAll("[data-waveform-button]")),
+  toneMenuButtons: Array.from(document.querySelectorAll("[data-wave-menu-item]")),
   channelInputs: Array.from(document.querySelectorAll('input[name="channel"]')),
   sweepDurationInputs: Array.from(document.querySelectorAll('input[name="sweepDuration"]')),
   waveformScope: document.getElementById("waveformScope"),
@@ -88,8 +116,32 @@ function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
 
-function isNoiseMode() {
-  return state.waveform === "noise";
+function isNoiseMode(waveform = state.waveform) {
+  return NOISE_WAVEFORMS.has(waveform);
+}
+
+function isToneWaveform(waveform = state.waveform) {
+  return TONE_WAVEFORMS.has(waveform);
+}
+
+function getToneWaveConfig(waveform = state.toneWaveform) {
+  return TONE_WAVE_CONFIGS[waveform] || TONE_WAVE_CONFIGS.sine;
+}
+
+function getActiveSourceStatus() {
+  if (state.isSweepActive) {
+    return "Sweep attivo";
+  }
+
+  if (state.waveform === "white-noise") {
+    return "Rumore bianco attivo";
+  }
+
+  if (state.waveform === "pink-noise") {
+    return "Rumore rosa attivo";
+  }
+
+  return "Tono attivo";
 }
 
 function parseFrequency(value, fallback = state.frequency) {
@@ -335,8 +387,29 @@ function updateSweepDurationUI() {
 }
 
 function updateWaveformUI() {
-  elements.waveformInputs.forEach((input) => {
-    input.checked = input.value === state.waveform;
+  const toneWaveConfig = getToneWaveConfig();
+  const isToneSelected = isToneWaveform();
+
+  elements.toneFamilyIcon.innerHTML = toneWaveConfig.iconMarkup;
+  elements.toneFamilyLabel.textContent = toneWaveConfig.label;
+  elements.toneFamilyButton.classList.toggle("is-active", isToneSelected);
+  elements.toneFamilyButton.classList.toggle("is-alt-wave", state.toneWaveform !== "sine");
+  elements.toneFamilyButton.setAttribute("aria-pressed", String(isToneSelected));
+  elements.toneFamilyButton.setAttribute(
+    "aria-label",
+    `${toneWaveConfig.label}. Tieni premuto per le altre onde`,
+  );
+
+  elements.waveformButtons.forEach((button) => {
+    const isActive = button.dataset.waveform === state.waveform;
+    button.classList.toggle("is-active", isActive);
+    button.setAttribute("aria-pressed", String(isActive));
+  });
+
+  elements.toneMenuButtons.forEach((button) => {
+    const isActive = button.dataset.waveform === state.toneWaveform;
+    button.classList.toggle("is-active", isActive);
+    button.setAttribute("aria-pressed", String(isActive));
   });
 }
 
@@ -374,8 +447,13 @@ function updateButtonState() {
     state.isPlaying ? "Ferma audio" : "Avvia audio",
   );
   elements.powerIcon.innerHTML = state.isPlaying ? STOP_ICON_MARKUP : PLAY_ICON_MARKUP;
-  elements.startSweepButton.disabled = disabledForNoise || state.isSweepActive;
-  elements.stopSweepButton.disabled = disabledForNoise || !state.isSweepActive;
+  elements.toggleSweepButton.disabled = disabledForNoise;
+  elements.toggleSweepButton.classList.toggle("is-on", state.isSweepActive);
+  elements.toggleSweepButton.textContent = state.isSweepActive ? "Stop" : "Sweep";
+  elements.toggleSweepButton.setAttribute(
+    "aria-label",
+    state.isSweepActive ? "Ferma sweep" : "Avvia sweep",
+  );
 }
 
 function syncAllUI() {
@@ -420,20 +498,59 @@ function ensureAudioGraph() {
   startScope();
 }
 
-function ensureNoiseBuffer() {
-  if (audio.noiseBuffer || !audio.context) {
+function createWhiteNoiseBuffer(frameCount) {
+  const noiseBuffer = audio.context.createBuffer(1, frameCount, audio.context.sampleRate);
+  const channelData = noiseBuffer.getChannelData(0);
+
+  for (let index = 0; index < frameCount; index += 1) {
+    channelData[index] = Math.random() * 2 - 1;
+  }
+
+  return noiseBuffer;
+}
+
+function createPinkNoiseBuffer(frameCount) {
+  const noiseBuffer = audio.context.createBuffer(1, frameCount, audio.context.sampleRate);
+  const channelData = noiseBuffer.getChannelData(0);
+  let b0 = 0;
+  let b1 = 0;
+  let b2 = 0;
+  let b3 = 0;
+  let b4 = 0;
+  let b5 = 0;
+  let b6 = 0;
+
+  for (let index = 0; index < frameCount; index += 1) {
+    const white = Math.random() * 2 - 1;
+    b0 = 0.99886 * b0 + white * 0.0555179;
+    b1 = 0.99332 * b1 + white * 0.0750759;
+    b2 = 0.969 * b2 + white * 0.153852;
+    b3 = 0.8665 * b3 + white * 0.3104856;
+    b4 = 0.55 * b4 + white * 0.5329522;
+    b5 = -0.7616 * b5 - white * 0.016898;
+    const pinkSample =
+      b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362;
+    b6 = white * 0.115926;
+    channelData[index] = clamp(pinkSample * 0.11, -1, 1);
+  }
+
+  return noiseBuffer;
+}
+
+function ensureNoiseBuffers() {
+  if (!audio.context) {
     return;
   }
 
   const frameCount = Math.floor(audio.context.sampleRate * NOISE_BUFFER_SECONDS);
-  const noiseBuffer = audio.context.createBuffer(1, frameCount, audio.context.sampleRate);
-  const channelData = noiseBuffer.getChannelData(0);
 
-  for (let i = 0; i < frameCount; i += 1) {
-    channelData[i] = Math.random() * 2 - 1;
+  if (!audio.whiteNoiseBuffer) {
+    audio.whiteNoiseBuffer = createWhiteNoiseBuffer(frameCount);
   }
 
-  audio.noiseBuffer = noiseBuffer;
+  if (!audio.pinkNoiseBuffer) {
+    audio.pinkNoiseBuffer = createPinkNoiseBuffer(frameCount);
+  }
 }
 
 function stopCurrentSource(sourceNode = audio.sourceNode) {
@@ -471,10 +588,11 @@ function createSource() {
   ensureAudioGraph();
 
   if (isNoiseMode()) {
-    ensureNoiseBuffer();
+    ensureNoiseBuffers();
 
     const noiseSource = audio.context.createBufferSource();
-    noiseSource.buffer = audio.noiseBuffer;
+    noiseSource.buffer =
+      state.waveform === "pink-noise" ? audio.pinkNoiseBuffer : audio.whiteNoiseBuffer;
     noiseSource.loop = true;
     noiseSource.connect(audio.masterGainNode);
     noiseSource.start();
@@ -514,7 +632,7 @@ async function startTone() {
   audio.masterGainNode.gain.linearRampToValueAtTime(state.volume, now + FADE_TIME);
 
   state.isPlaying = true;
-  updateStatus(isNoiseMode() ? "Noise attivo" : state.isSweepActive ? "Sweep attivo" : "Tono attivo");
+  updateStatus(getActiveSourceStatus());
   updateButtonState();
 }
 
@@ -623,8 +741,14 @@ function setChannel(nextChannel) {
 
 function setWaveform(nextWaveform) {
   const wasNoise = isNoiseMode();
+  const wasTone = isToneWaveform();
   state.waveform = nextWaveform;
   const isNowNoise = isNoiseMode();
+  const isNowTone = isToneWaveform();
+
+  if (isNowTone) {
+    state.toneWaveform = nextWaveform;
+  }
 
   if (isNowNoise && state.isSweepActive) {
     stopSweep();
@@ -639,14 +763,14 @@ function setWaveform(nextWaveform) {
     return;
   }
 
-  if (!wasNoise && !isNowNoise && audio.sourceKind === "tone") {
+  if (!wasNoise && !isNowNoise && wasTone && isNowTone && audio.sourceKind === "tone") {
     audio.sourceNode.type = nextWaveform;
-    updateStatus("Tono attivo");
+    updateStatus(getActiveSourceStatus());
     return;
   }
 
   rebuildPlayingSource();
-  updateStatus(isNowNoise ? "Noise attivo" : "Tono attivo");
+  updateStatus(getActiveSourceStatus());
 }
 
 function stopSweep() {
@@ -660,7 +784,7 @@ function stopSweep() {
 
   if (state.isSweepActive) {
     state.isSweepActive = false;
-    updateStatus(state.isPlaying ? "Tono attivo" : "Pronto");
+    updateStatus(state.isPlaying ? getActiveSourceStatus() : "Pronto");
     updateButtonState();
   }
 }
@@ -785,6 +909,18 @@ function changeFrequencyByStep(stepDelta) {
   applyManualFrequency(state.frequency + stepDelta);
 }
 
+function openToneWaveMenu() {
+  elements.toneWaveMenu.hidden = false;
+  elements.wavePicker.classList.add("is-menu-open");
+  elements.toneFamilyButton.setAttribute("aria-expanded", "true");
+}
+
+function closeToneWaveMenu() {
+  elements.toneWaveMenu.hidden = true;
+  elements.wavePicker.classList.remove("is-menu-open");
+  elements.toneFamilyButton.setAttribute("aria-expanded", "false");
+}
+
 function bindScopeResize() {
   resizeScopeCanvas();
   clearScope();
@@ -812,6 +948,10 @@ function bindPressAndHold(button, direction) {
       return;
     }
 
+    if (event.pointerType === "mouse" && event.button !== 0) {
+      return;
+    }
+
     event.preventDefault();
 
     if (button.setPointerCapture) {
@@ -832,6 +972,191 @@ function bindPressAndHold(button, direction) {
   });
 }
 
+function bindInstantButton(button, handler) {
+  let suppressClick = false;
+
+  button.addEventListener("pointerdown", (event) => {
+    if (button.disabled) {
+      return;
+    }
+
+    if (event.pointerType === "mouse" && event.button !== 0) {
+      return;
+    }
+
+    suppressClick = true;
+    event.preventDefault();
+    handler(event);
+  });
+
+  button.addEventListener("click", (event) => {
+    if (suppressClick) {
+      suppressClick = false;
+      event.preventDefault();
+      return;
+    }
+
+    handler(event);
+  });
+
+  ["pointercancel", "lostpointercapture"].forEach((eventName) => {
+    button.addEventListener(eventName, () => {
+      suppressClick = false;
+    });
+  });
+}
+
+function bindInstantRadioOption(input, onSelect) {
+  const option = input.closest("label");
+
+  if (!option) {
+    return;
+  }
+
+  option.addEventListener("pointerdown", (event) => {
+    if (input.disabled) {
+      return;
+    }
+
+    if (event.pointerType === "mouse" && event.button !== 0) {
+      return;
+    }
+
+    event.preventDefault();
+
+    if (!input.checked) {
+      input.checked = true;
+      onSelect(input.value);
+    }
+  });
+}
+
+function setRangeValueFromPointer(rangeInput, clientX) {
+  const rect = rangeInput.getBoundingClientRect();
+
+  if (!rect.width) {
+    return;
+  }
+
+  const min = Number(rangeInput.min || 0);
+  const max = Number(rangeInput.max || 100);
+  const step = Math.max(Number(rangeInput.step || 1), Number.EPSILON);
+  const rawValue = min + clamp((clientX - rect.left) / rect.width, 0, 1) * (max - min);
+  const steppedValue = min + Math.round((rawValue - min) / step) * step;
+  const nextValue = clamp(steppedValue, min, max);
+
+  if (Number(rangeInput.value) === nextValue) {
+    return;
+  }
+
+  rangeInput.value = String(nextValue);
+  rangeInput.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+function bindInstantRange(rangeInput) {
+  let activePointerId = null;
+
+  rangeInput.addEventListener("pointerdown", (event) => {
+    if (rangeInput.disabled) {
+      return;
+    }
+
+    if (event.pointerType === "mouse" && event.button !== 0) {
+      return;
+    }
+
+    activePointerId = event.pointerId;
+    event.preventDefault();
+    rangeInput.setPointerCapture?.(event.pointerId);
+    setRangeValueFromPointer(rangeInput, event.clientX);
+  });
+
+  rangeInput.addEventListener("pointermove", (event) => {
+    if (event.pointerId !== activePointerId) {
+      return;
+    }
+
+    event.preventDefault();
+    setRangeValueFromPointer(rangeInput, event.clientX);
+  });
+
+  ["pointerup", "pointercancel", "lostpointercapture"].forEach((eventName) => {
+    rangeInput.addEventListener(eventName, (event) => {
+      if (event.pointerId !== activePointerId) {
+        return;
+      }
+
+      activePointerId = null;
+      rangeInput.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+  });
+}
+
+function bindToneFamilyButton() {
+  let menuTimeoutId = null;
+  let menuOpenedByHold = false;
+  let suppressClick = false;
+
+  const clearMenuTimer = () => {
+    if (!menuTimeoutId) {
+      return;
+    }
+
+    window.clearTimeout(menuTimeoutId);
+    menuTimeoutId = null;
+  };
+
+  elements.toneFamilyButton.addEventListener("pointerdown", (event) => {
+    if (event.pointerType === "mouse" && event.button !== 0) {
+      return;
+    }
+
+    suppressClick = true;
+    menuOpenedByHold = false;
+    event.preventDefault();
+    elements.toneFamilyButton.setPointerCapture?.(event.pointerId);
+    clearMenuTimer();
+    menuTimeoutId = window.setTimeout(() => {
+      menuOpenedByHold = true;
+      openToneWaveMenu();
+    }, LONG_PRESS_MENU_DELAY_MS);
+  });
+
+  elements.toneFamilyButton.addEventListener("pointerup", () => {
+    clearMenuTimer();
+
+    if (!menuOpenedByHold) {
+      closeToneWaveMenu();
+      setWaveform(state.toneWaveform);
+    }
+
+    menuOpenedByHold = false;
+  });
+
+  ["pointercancel", "lostpointercapture"].forEach((eventName) => {
+    elements.toneFamilyButton.addEventListener(eventName, () => {
+      clearMenuTimer();
+      menuOpenedByHold = false;
+      suppressClick = false;
+    });
+  });
+
+  elements.toneFamilyButton.addEventListener("click", (event) => {
+    if (suppressClick) {
+      suppressClick = false;
+      event.preventDefault();
+      return;
+    }
+
+    closeToneWaveMenu();
+    setWaveform(state.toneWaveform);
+  });
+
+  elements.toneFamilyButton.addEventListener("contextmenu", (event) => {
+    event.preventDefault();
+  });
+}
+
 function bindAudioUnlock() {
   const unlockAudio = () => {
     if (!audio.context || audio.context.state === "running") {
@@ -847,7 +1172,7 @@ function bindAudioUnlock() {
 }
 
 function bindEvents() {
-  elements.powerButton.addEventListener("click", () => {
+  bindInstantButton(elements.powerButton, () => {
     if (state.isPlaying) {
       stopTone();
       return;
@@ -856,19 +1181,29 @@ function bindEvents() {
     startTone().catch(() => updateStatus("Audio non disponibile"));
   });
 
-  elements.waveformInputs.forEach((input) => {
-    input.addEventListener("change", (event) => {
-      if (event.target.checked) {
-        setWaveform(event.target.value);
-      }
+  bindToneFamilyButton();
+
+  elements.waveformButtons.forEach((button) => {
+    bindInstantButton(button, () => {
+      closeToneWaveMenu();
+      setWaveform(button.dataset.waveform);
+    });
+  });
+
+  elements.toneMenuButtons.forEach((button) => {
+    bindInstantButton(button, () => {
+      closeToneWaveMenu();
+      setWaveform(button.dataset.waveform);
     });
   });
 
   elements.volumeInput.addEventListener("input", (event) => {
     setVolume(Number(event.target.value) / 100);
   });
+  bindInstantRange(elements.volumeInput);
 
   elements.channelInputs.forEach((input) => {
+    bindInstantRadioOption(input, setChannel);
     input.addEventListener("change", (event) => {
       if (event.target.checked) {
         setChannel(event.target.value);
@@ -887,6 +1222,7 @@ function bindEvents() {
   elements.frequencySlider.addEventListener("input", (event) => {
     applyManualFrequency(sliderValueToFrequency(Number(event.target.value)));
   });
+  bindInstantRange(elements.frequencySlider);
 
   elements.frequencyInput.addEventListener("blur", () => {
     elements.frequencyInput.value = String(Math.round(state.frequency));
@@ -903,6 +1239,7 @@ function bindEvents() {
     }
     syncSweepFromSliders();
   });
+  bindInstantRange(elements.sweepStartSlider);
 
   elements.sweepEndSlider.addEventListener("input", () => {
     stopSweep();
@@ -911,16 +1248,23 @@ function bindEvents() {
     }
     syncSweepFromSliders();
   });
+  bindInstantRange(elements.sweepEndSlider);
 
-  elements.startSweepButton.addEventListener("click", () => {
+  bindInstantButton(elements.toggleSweepButton, () => {
+    if (state.isSweepActive) {
+      stopSweep();
+      return;
+    }
+
     startSweep().catch(() => updateStatus("Sweep non disponibile"));
   });
 
-  elements.stopSweepButton.addEventListener("click", () => {
-    stopSweep();
-  });
-
   elements.sweepDurationInputs.forEach((input) => {
+    bindInstantRadioOption(input, (value) => {
+      stopSweep();
+      setSweepDuration(value);
+    });
+
     input.addEventListener("change", (event) => {
       if (event.target.checked) {
         stopSweep();
@@ -931,6 +1275,20 @@ function bindEvents() {
 
   bindPressAndHold(elements.decreaseButton, -1);
   bindPressAndHold(elements.increaseButton, 1);
+
+  document.addEventListener("pointerdown", (event) => {
+    if (elements.toneWaveMenu.hidden || elements.wavePicker.contains(event.target)) {
+      return;
+    }
+
+    closeToneWaveMenu();
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closeToneWaveMenu();
+    }
+  });
 }
 
 function init() {

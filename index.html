@@ -81,47 +81,81 @@
 
         <fieldset class="field">
           <legend class="sr-only">Sorgente</legend>
-          <div class="wave-group" role="radiogroup" aria-label="Sorgente audio">
-            <label class="wave-option" title="Sine">
-              <input type="radio" name="waveform" value="sine" checked />
-              <span>
+          <div id="wavePicker" class="wave-picker">
+            <div class="wave-group wave-group-main" role="group" aria-label="Sorgente audio">
+              <button
+                id="toneFamilyButton"
+                class="wave-button"
+                type="button"
+                aria-label="Sinusoide. Tieni premuto per le altre onde"
+                aria-haspopup="true"
+                aria-expanded="false"
+              >
+                <span class="wave-button-face">
+                  <svg id="toneFamilyIcon" class="wave-icon" viewBox="0 0 64 32" aria-hidden="true">
+                    <path d="M2 17 C8 17 8 5 16 5 S24 29 32 29 S40 5 48 5 S56 17 62 17" />
+                  </svg>
+                  <span id="toneFamilyLabel" class="wave-button-label">Sinusoide</span>
+                  <span class="wave-button-hint">1s</span>
+                </span>
+              </button>
+              <button
+                class="wave-button"
+                type="button"
+                data-waveform-button
+                data-waveform="white-noise"
+                aria-label="Rumore bianco"
+              >
+                <span class="wave-button-face">
+                  <svg class="wave-icon" viewBox="0 0 64 32" aria-hidden="true">
+                    <path d="M2 17 L8 10 L14 21 L20 8 L26 24 L32 9 L38 22 L44 6 L50 19 L56 11 L62 17" />
+                  </svg>
+                  <span class="wave-button-label">Bianco</span>
+                </span>
+              </button>
+              <button
+                class="wave-button"
+                type="button"
+                data-waveform-button
+                data-waveform="pink-noise"
+                aria-label="Rumore rosa"
+              >
+                <span class="wave-button-face">
+                  <svg class="wave-icon" viewBox="0 0 64 32" aria-hidden="true">
+                    <path d="M2 10 L8 13 L14 9 L20 15 L26 12 L32 18 L38 14 L44 20 L50 17 L56 23 L62 20" />
+                    <path d="M4 24 L18 21 L32 18 L46 15 L60 12" />
+                  </svg>
+                  <span class="wave-button-label">Rosa</span>
+                </span>
+              </button>
+            </div>
+
+            <div id="toneWaveMenu" class="tone-wave-menu" role="menu" aria-label="Altre onde" hidden>
+              <button type="button" class="tone-wave-menu-button" data-wave-menu-item data-waveform="sine">
                 <svg class="wave-icon" viewBox="0 0 64 32" aria-hidden="true">
                   <path d="M2 17 C8 17 8 5 16 5 S24 29 32 29 S40 5 48 5 S56 17 62 17" />
                 </svg>
-              </span>
-            </label>
-            <label class="wave-option" title="Square">
-              <input type="radio" name="waveform" value="square" />
-              <span>
+                <span>Sinusoide</span>
+              </button>
+              <button type="button" class="tone-wave-menu-button" data-wave-menu-item data-waveform="square">
                 <svg class="wave-icon" viewBox="0 0 64 32" aria-hidden="true">
                   <path d="M2 17 H14 V7 H30 V25 H46 V7 H62 V17" />
                 </svg>
-              </span>
-            </label>
-            <label class="wave-option" title="Triangle">
-              <input type="radio" name="waveform" value="triangle" />
-              <span>
+                <span>Quadra</span>
+              </button>
+              <button type="button" class="tone-wave-menu-button" data-wave-menu-item data-waveform="triangle">
                 <svg class="wave-icon" viewBox="0 0 64 32" aria-hidden="true">
                   <path d="M2 17 L14 7 L30 29 L46 5 L58 17 L62 17" />
                 </svg>
-              </span>
-            </label>
-            <label class="wave-option" title="Sawtooth">
-              <input type="radio" name="waveform" value="sawtooth" />
-              <span>
+                <span>Triangolo</span>
+              </button>
+              <button type="button" class="tone-wave-menu-button" data-wave-menu-item data-waveform="sawtooth">
                 <svg class="wave-icon" viewBox="0 0 64 32" aria-hidden="true">
                   <path d="M2 12 L14 24 V4 L34 24 V4 L54 24 V12 H62" />
                 </svg>
-              </span>
-            </label>
-            <label class="wave-option" title="Noise">
-              <input type="radio" name="waveform" value="noise" />
-              <span>
-                <svg class="wave-icon" viewBox="0 0 64 32" aria-hidden="true">
-                  <path d="M2 17 L8 10 L14 21 L20 8 L26 24 L32 9 L38 22 L44 6 L50 19 L56 11 L62 17" />
-                </svg>
-              </span>
-            </label>
+                <span>Dente</span>
+              </button>
+            </div>
           </div>
         </fieldset>
 
@@ -187,6 +221,9 @@
             </div>
           </div>
 
+        </div>
+
+        <div class="sweep-action-row">
           <fieldset class="field sweep-duration-field">
             <legend class="sr-only">Durata sweep</legend>
             <div class="sweep-duration-group" role="radiogroup" aria-label="Durata sweep in secondi">
@@ -204,11 +241,8 @@
               </label>
             </div>
           </fieldset>
-        </div>
 
-        <div class="button-row button-row-sweep">
-          <button id="startSweepButton" class="btn btn-primary" type="button">Sweep</button>
-          <button id="stopSweepButton" class="btn btn-secondary" type="button">Stop</button>
+          <button id="toggleSweepButton" class="btn btn-primary btn-sweep-toggle" type="button">Sweep</button>
         </div>
       </section>
 

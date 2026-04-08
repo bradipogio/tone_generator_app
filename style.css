@@ -92,6 +92,8 @@ select {
 button {
   border: 0;
   cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 input,
@@ -430,21 +432,18 @@ legend {
   margin-bottom: 10px;
 }
 
-.channel-option,
-.wave-option {
+.channel-option {
   position: relative;
 }
 
-.channel-option input,
-.wave-option input {
+.channel-option input {
   position: absolute;
   inset: 0;
   opacity: 0;
   pointer-events: none;
 }
 
-.channel-option span,
-.wave-option span {
+.channel-option span {
   display: grid;
   place-items: center;
   min-height: 46px;
@@ -459,22 +458,51 @@ legend {
     background 140ms ease,
     box-shadow 140ms ease,
     transform 140ms ease;
+  touch-action: manipulation;
 }
 
 .channel-option input:not(:checked) + span {
   opacity: 0.78;
 }
 
-.wave-group {
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+.wave-picker {
+  position: relative;
   margin-top: 12px;
   margin-bottom: 12px;
 }
 
-.wave-option span {
-  min-height: 52px;
-  padding: 6px;
+.wave-group-main {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.wave-button {
+  min-width: 0;
+  padding: 0;
+  background: transparent;
+  touch-action: manipulation;
+}
+
+.wave-button-face,
+.tone-wave-menu-button {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  min-height: 60px;
+  padding: 8px 8px 10px;
+  border: 1.5px solid rgba(255, 213, 79, 0.18);
+  border-radius: 16px;
   background: #0d0d0d;
+  color: var(--muted);
+  transition:
+    border-color 140ms ease,
+    background 140ms ease,
+    color 140ms ease,
+    transform 140ms ease;
+}
+
+.wave-button-face {
+  width: 100%;
 }
 
 .wave-icon {
@@ -491,15 +519,81 @@ legend {
   stroke-linejoin: round;
 }
 
-.wave-option input:checked + span {
+.wave-button-label {
+  display: block;
+  color: currentColor;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.wave-button-hint {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  min-width: 28px;
+  padding: 2px 6px;
+  border: 1px solid rgba(255, 213, 79, 0.16);
+  border-radius: 999px;
+  color: rgba(255, 226, 126, 0.72);
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  line-height: 1;
+}
+
+.wave-button.is-active .wave-button-face,
+.tone-wave-menu-button.is-active {
   border-color: var(--active-border);
   background: #151105;
   color: var(--primary-strong);
-  box-shadow: none;
+  transform: translateY(-1px);
 }
 
-.wave-option input:checked + span .wave-icon path {
+.wave-button.is-active .wave-icon path,
+.tone-wave-menu-button.is-active .wave-icon path {
   stroke: var(--primary-strong);
+}
+
+.wave-button.is-alt-wave .wave-button-hint {
+  border-color: rgba(255, 213, 79, 0.36);
+  color: var(--primary);
+}
+
+.tone-wave-menu {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 10px);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid rgba(255, 213, 79, 0.22);
+  border-radius: 18px;
+  background: rgba(8, 8, 8, 0.98);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.28);
+  z-index: 10;
+}
+
+.tone-wave-menu[hidden] {
+  display: none;
+}
+
+.tone-wave-menu-button {
+  min-width: 0;
+  min-height: 0;
+  padding: 8px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  touch-action: manipulation;
+}
+
+.tone-wave-menu-button span {
+  color: currentColor;
 }
 
 .channel-option:not(.channel-stereo) span {
@@ -553,7 +647,7 @@ input[type="range"] {
   padding: 0;
   border: 0;
   background: transparent;
-  touch-action: pan-x;
+  touch-action: none;
 }
 
 input[type="range"]::-webkit-slider-runnable-track {
@@ -753,7 +847,7 @@ input[type="range"]::-moz-range-thumb {
   right: 0;
   bottom: 0;
   margin: 0;
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 .range-badge {
@@ -812,7 +906,8 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .sweep-duration-field {
-  margin-top: 4px;
+  margin-top: 0;
+  min-width: 0;
 }
 
 .sweep-duration-group {
@@ -848,6 +943,7 @@ input[type="range"]::-moz-range-thumb {
     background 140ms ease,
     color 140ms ease,
     transform 140ms ease;
+  touch-action: manipulation;
 }
 
 .sweep-duration-option input:checked + span {
@@ -855,6 +951,18 @@ input[type="range"]::-moz-range-thumb {
   background: #181305;
   color: var(--primary-strong);
   transform: translateY(-1px);
+}
+
+.sweep-action-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 96px;
+  gap: 10px;
+  align-items: end;
+  margin-top: 12px;
+}
+
+.btn-sweep-toggle {
+  min-height: 44px;
 }
 
 @media (min-width: 640px) {
