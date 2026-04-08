@@ -407,7 +407,7 @@ legend {
   min-height: 72px;
   margin-top: 12px;
   border-radius: 22px;
-  border-width: 4px;
+  border-width: 6px;
 }
 
 .power-icon {
@@ -735,16 +735,25 @@ input[type="range"]::-moz-range-thumb {
   width: 100%;
   min-height: 38px;
   z-index: 2;
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
 }
 
 .volume-slider::-webkit-slider-runnable-track {
   height: 38px;
-  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  box-shadow: none;
 }
 
 .volume-slider::-moz-range-track {
   height: 38px;
-  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  box-shadow: none;
 }
 
 .volume-slider::-webkit-slider-thumb {

@@ -364,8 +364,10 @@ function updateSweepUI() {
   const endSliderValue = Number(elements.sweepEndSlider.value);
   const left = (Math.min(startSliderValue, endSliderValue) / FREQUENCY_SLIDER_MAX) * 100;
   const width = (Math.abs(endSliderValue - startSliderValue) / FREQUENCY_SLIDER_MAX) * 100;
-  const startLeft = (startSliderValue / FREQUENCY_SLIDER_MAX) * 100;
-  const endLeft = (endSliderValue / FREQUENCY_SLIDER_MAX) * 100;
+  const sliderTrack = elements.sweepStartBadge.parentElement;
+  const trackWidth = sliderTrack ? sliderTrack.clientWidth : 0;
+  const startLeft = (startSliderValue / FREQUENCY_SLIDER_MAX) * trackWidth;
+  const endLeft = (endSliderValue / FREQUENCY_SLIDER_MAX) * trackWidth;
   const isOverlap = Math.abs(endSliderValue - startSliderValue) < 120;
 
   elements.sweepRangeFill.style.left = `${left}%`;
@@ -374,10 +376,16 @@ function updateSweepUI() {
   elements.sweepEndSlider.style.zIndex = endSliderValue < startSliderValue ? "2" : "3";
   elements.sweepStartBadge.textContent = formatFrequency(state.sweep.start);
   elements.sweepEndBadge.textContent = formatFrequency(state.sweep.end);
-  elements.sweepStartBadge.style.left = `${startLeft}%`;
-  elements.sweepEndBadge.style.left = `${endLeft}%`;
   elements.sweepStartBadge.classList.toggle("is-overlap", isOverlap);
   elements.sweepEndBadge.classList.toggle("is-overlap", isOverlap);
+
+  const startHalfWidth = elements.sweepStartBadge.offsetWidth * 0.5;
+  const endHalfWidth = elements.sweepEndBadge.offsetWidth * 0.5;
+  const clampedStartLeft = clamp(startLeft, startHalfWidth, Math.max(trackWidth - startHalfWidth, startHalfWidth));
+  const clampedEndLeft = clamp(endLeft, endHalfWidth, Math.max(trackWidth - endHalfWidth, endHalfWidth));
+
+  elements.sweepStartBadge.style.left = `${clampedStartLeft}px`;
+  elements.sweepEndBadge.style.left = `${clampedEndLeft}px`;
 }
 
 function updateSweepDurationUI() {
