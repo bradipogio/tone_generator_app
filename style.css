@@ -487,9 +487,9 @@ legend {
   position: relative;
   display: grid;
   justify-items: center;
-  gap: 6px;
+  align-items: center;
   min-height: 60px;
-  padding: 8px 8px 10px;
+  padding: 8px;
   border: 1.5px solid rgba(255, 213, 79, 0.18);
   border-radius: 16px;
   background: #0d0d0d;
@@ -519,28 +519,8 @@ legend {
   stroke-linejoin: round;
 }
 
-.wave-button-label {
-  display: block;
-  color: currentColor;
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.wave-button-hint {
-  position: absolute;
-  top: 7px;
-  right: 7px;
-  min-width: 28px;
-  padding: 2px 6px;
-  border: 1px solid rgba(255, 213, 79, 0.16);
-  border-radius: 999px;
-  color: rgba(255, 226, 126, 0.72);
-  font-size: 0.58rem;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  line-height: 1;
+.wave-icon-pink path {
+  stroke: #ff8fc5;
 }
 
 .wave-button.is-active .wave-button-face,
@@ -556,9 +536,8 @@ legend {
   stroke: var(--primary-strong);
 }
 
-.wave-button.is-alt-wave .wave-button-hint {
-  border-color: rgba(255, 213, 79, 0.36);
-  color: var(--primary);
+.wave-button.is-active .wave-icon-pink path {
+  stroke: #ffc0de;
 }
 
 .tone-wave-menu {
@@ -585,15 +564,7 @@ legend {
   min-width: 0;
   min-height: 0;
   padding: 8px;
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
   touch-action: manipulation;
-}
-
-.tone-wave-menu-button span {
-  color: currentColor;
 }
 
 .channel-option:not(.channel-stereo) span {

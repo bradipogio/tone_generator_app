@@ -393,7 +393,6 @@ function updateWaveformUI() {
   elements.toneFamilyIcon.innerHTML = toneWaveConfig.iconMarkup;
   elements.toneFamilyLabel.textContent = toneWaveConfig.label;
   elements.toneFamilyButton.classList.toggle("is-active", isToneSelected);
-  elements.toneFamilyButton.classList.toggle("is-alt-wave", state.toneWaveform !== "sine");
   elements.toneFamilyButton.setAttribute("aria-pressed", String(isToneSelected));
   elements.toneFamilyButton.setAttribute(
     "aria-label",
@@ -1094,7 +1093,7 @@ function bindInstantRange(rangeInput) {
 
 function bindToneFamilyButton() {
   let menuTimeoutId = null;
-  let menuOpenedByHold = false;
+  let didLongPress = false;
   let suppressClick = false;
 
   const clearMenuTimer = () => {
@@ -1112,12 +1111,11 @@ function bindToneFamilyButton() {
     }
 
     suppressClick = true;
-    menuOpenedByHold = false;
+    didLongPress = false;
     event.preventDefault();
-    elements.toneFamilyButton.setPointerCapture?.(event.pointerId);
     clearMenuTimer();
     menuTimeoutId = window.setTimeout(() => {
-      menuOpenedByHold = true;
+      didLongPress = true;
       openToneWaveMenu();
     }, LONG_PRESS_MENU_DELAY_MS);
   });
@@ -1125,18 +1123,18 @@ function bindToneFamilyButton() {
   elements.toneFamilyButton.addEventListener("pointerup", () => {
     clearMenuTimer();
 
-    if (!menuOpenedByHold) {
+    if (!didLongPress) {
       closeToneWaveMenu();
       setWaveform(state.toneWaveform);
     }
 
-    menuOpenedByHold = false;
+    didLongPress = false;
   });
 
   ["pointercancel", "lostpointercapture"].forEach((eventName) => {
     elements.toneFamilyButton.addEventListener(eventName, () => {
       clearMenuTimer();
-      menuOpenedByHold = false;
+      didLongPress = false;
       suppressClick = false;
     });
   });
