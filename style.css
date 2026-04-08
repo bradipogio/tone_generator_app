@@ -734,10 +734,12 @@ input[type="range"]::-moz-range-thumb {
   inset: 0;
   width: 100%;
   min-height: 38px;
-  z-index: 2;
+  z-index: 3;
   appearance: none;
   -webkit-appearance: none;
   background: transparent;
+  opacity: 0;
+  cursor: pointer;
 }
 
 .volume-slider::-webkit-slider-runnable-track {
