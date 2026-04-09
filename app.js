@@ -1390,7 +1390,7 @@ function bindEvents() {
   });
   bindSweepRange(elements.sweepRange);
 
-  bindInstantButton(elements.toggleSweepButton, () => {
+  elements.toggleSweepButton.addEventListener("click", () => {
     if (state.isSweepActive) {
       stopSweep();
       return;
