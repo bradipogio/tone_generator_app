@@ -69,6 +69,7 @@ const audio = {
   rightGainNode: null,
   stopTimeoutId: null,
   switchTimeoutId: null,
+  playbackSessionRequested: false,
 };
 
 const sweepState = {
@@ -630,7 +631,27 @@ function createSource() {
   audio.sourceKind = "tone";
 }
 
+function requestPlaybackAudioSession() {
+  if (audio.playbackSessionRequested) {
+    return;
+  }
+
+  const audioSession = navigator.audioSession;
+
+  if (!audioSession) {
+    return;
+  }
+
+  try {
+    audioSession.type = "playback";
+    audio.playbackSessionRequested = audioSession.type === "playback";
+  } catch (error) {
+    // iOS/Safari support is partial; ignore and keep the existing fallback behavior.
+  }
+}
+
 async function ensureRunningContext() {
+  requestPlaybackAudioSession();
   ensureAudioGraph();
 
   if (audio.context.state !== "running") {
@@ -1277,6 +1298,8 @@ function bindToneFamilyButton() {
 
 function bindAudioUnlock() {
   const unlockAudio = () => {
+    requestPlaybackAudioSession();
+
     if (!audio.context || audio.context.state === "running") {
       return;
     }
