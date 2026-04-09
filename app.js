@@ -75,6 +75,8 @@ const sweepState = {
   frameId: null,
   lastTimestamp: 0,
   progress: 0,
+  activePointerId: null,
+  activeSlider: null,
 };
 
 const scopeState = {
@@ -97,6 +99,7 @@ const elements = {
   sweepStartBadge: document.getElementById("sweepStartBadge"),
   sweepEndBadge: document.getElementById("sweepEndBadge"),
   sweepRangeFill: document.getElementById("sweepRangeFill"),
+  sweepRange: document.getElementById("sweepRange"),
   toggleSweepButton: document.getElementById("toggleSweepButton"),
   frequencyPanel: document.getElementById("frequencyPanel"),
   sweepPanel: document.getElementById("sweepPanel"),
@@ -369,11 +372,21 @@ function updateSweepUI() {
   const startLeft = (startSliderValue / FREQUENCY_SLIDER_MAX) * trackWidth;
   const endLeft = (endSliderValue / FREQUENCY_SLIDER_MAX) * trackWidth;
   const isOverlap = Math.abs(endSliderValue - startSliderValue) < 120;
+  const isStartActive = sweepState.activeSlider === elements.sweepStartSlider;
+  const isEndActive = sweepState.activeSlider === elements.sweepEndSlider;
 
   elements.sweepRangeFill.style.left = `${left}%`;
   elements.sweepRangeFill.style.width = `${Math.max(width, 0.8)}%`;
-  elements.sweepStartSlider.style.zIndex = startSliderValue <= endSliderValue ? "2" : "3";
-  elements.sweepEndSlider.style.zIndex = endSliderValue < startSliderValue ? "2" : "3";
+  if (isStartActive) {
+    elements.sweepStartSlider.style.zIndex = "3";
+    elements.sweepEndSlider.style.zIndex = "2";
+  } else if (isEndActive) {
+    elements.sweepStartSlider.style.zIndex = "2";
+    elements.sweepEndSlider.style.zIndex = "3";
+  } else {
+    elements.sweepStartSlider.style.zIndex = startSliderValue <= endSliderValue ? "2" : "3";
+    elements.sweepEndSlider.style.zIndex = endSliderValue < startSliderValue ? "2" : "3";
+  }
   elements.sweepStartBadge.textContent = formatFrequency(state.sweep.start);
   elements.sweepEndBadge.textContent = formatFrequency(state.sweep.end);
   elements.sweepStartBadge.classList.toggle("is-overlap", isOverlap);
@@ -1053,11 +1066,12 @@ function setRangeValueFromPointer(rangeInput, clientX) {
   const nextValue = clamp(steppedValue, min, max);
 
   if (Number(rangeInput.value) === nextValue) {
-    return;
+    return false;
   }
 
   rangeInput.value = String(nextValue);
   rangeInput.dispatchEvent(new Event("input", { bubbles: true }));
+  return true;
 }
 
 function bindInstantRange(rangeInput) {
@@ -1095,6 +1109,104 @@ function bindInstantRange(rangeInput) {
 
       activePointerId = null;
       rangeInput.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+  });
+}
+
+function getRangeThumbClientX(rangeInput) {
+  const rect = rangeInput.getBoundingClientRect();
+
+  if (!rect.width) {
+    return rect.left;
+  }
+
+  const min = Number(rangeInput.min || 0);
+  const max = Number(rangeInput.max || 100);
+  const value = Number(rangeInput.value);
+  const ratio = max === min ? 0 : (value - min) / (max - min);
+  return rect.left + clamp(ratio, 0, 1) * rect.width;
+}
+
+function setSweepSliderValueFromPointer(rangeInput, clientX) {
+  const currentValue = Number(rangeInput.value);
+  const didChange = setRangeValueFromPointer(rangeInput, clientX);
+
+  if (rangeInput === elements.sweepStartSlider && Number(rangeInput.value) > Number(elements.sweepEndSlider.value)) {
+    rangeInput.value = elements.sweepEndSlider.value;
+    rangeInput.dispatchEvent(new Event("input", { bubbles: true }));
+    return Number(rangeInput.value) !== currentValue;
+  }
+
+  if (rangeInput === elements.sweepEndSlider && Number(rangeInput.value) < Number(elements.sweepStartSlider.value)) {
+    rangeInput.value = elements.sweepStartSlider.value;
+    rangeInput.dispatchEvent(new Event("input", { bubbles: true }));
+    return Number(rangeInput.value) !== currentValue;
+  }
+
+  return didChange;
+}
+
+function getClosestSweepSlider(clientX) {
+  const startDistance = Math.abs(clientX - getRangeThumbClientX(elements.sweepStartSlider));
+  const endDistance = Math.abs(clientX - getRangeThumbClientX(elements.sweepEndSlider));
+
+  if (startDistance === endDistance) {
+    return clientX <= getRangeThumbClientX(elements.sweepStartSlider) ? elements.sweepStartSlider : elements.sweepEndSlider;
+  }
+
+  return startDistance < endDistance ? elements.sweepStartSlider : elements.sweepEndSlider;
+}
+
+function bindSweepRange(rangeElement) {
+  if (!rangeElement) {
+    return;
+  }
+
+  const clearActiveSweepSlider = () => {
+    sweepState.activePointerId = null;
+    sweepState.activeSlider = null;
+    updateSweepUI();
+  };
+
+  rangeElement.addEventListener("pointerdown", (event) => {
+    if (elements.sweepStartSlider.disabled || elements.sweepEndSlider.disabled) {
+      return;
+    }
+
+    if (event.pointerType === "mouse" && event.button !== 0) {
+      return;
+    }
+
+    if (event.pointerType === "mouse") {
+      return;
+    }
+
+    sweepState.activePointerId = event.pointerId;
+    sweepState.activeSlider = getClosestSweepSlider(event.clientX);
+    event.preventDefault();
+    rangeElement.setPointerCapture?.(event.pointerId);
+    updateSweepUI();
+    setSweepSliderValueFromPointer(sweepState.activeSlider, event.clientX);
+  });
+
+  rangeElement.addEventListener("pointermove", (event) => {
+    if (event.pointerId !== sweepState.activePointerId || !sweepState.activeSlider) {
+      return;
+    }
+
+    event.preventDefault();
+    setSweepSliderValueFromPointer(sweepState.activeSlider, event.clientX);
+  });
+
+  ["pointerup", "pointercancel", "lostpointercapture"].forEach((eventName) => {
+    rangeElement.addEventListener(eventName, (event) => {
+      if (sweepState.activePointerId === null || (event.pointerId !== undefined && event.pointerId !== sweepState.activePointerId)) {
+        return;
+      }
+
+      const activeSlider = sweepState.activeSlider;
+      clearActiveSweepSlider();
+      activeSlider?.dispatchEvent(new Event("change", { bubbles: true }));
     });
   });
 }
@@ -1178,7 +1290,7 @@ function bindAudioUnlock() {
 }
 
 function bindEvents() {
-  bindInstantButton(elements.powerButton, () => {
+  elements.powerButton.addEventListener("click", () => {
     if (state.isPlaying) {
       stopTone();
       return;
@@ -1253,6 +1365,7 @@ function bindEvents() {
     }
     syncSweepFromSliders();
   });
+  bindSweepRange(elements.sweepRange);
 
   bindInstantButton(elements.toggleSweepButton, () => {
     if (state.isSweepActive) {

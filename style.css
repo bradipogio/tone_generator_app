@@ -900,6 +900,21 @@ input[type="range"]::-moz-range-thumb {
   pointer-events: auto;
 }
 
+@media (pointer: coarse) {
+  .range-start::-webkit-slider-thumb,
+  .range-end::-webkit-slider-thumb {
+    width: 28px;
+    height: 28px;
+    margin-top: -9px;
+  }
+
+  .range-start::-moz-range-thumb,
+  .range-end::-moz-range-thumb {
+    width: 28px;
+    height: 28px;
+  }
+}
+
 .sweep-duration-field {
   margin-top: 0;
   min-width: 0;
