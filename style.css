@@ -231,7 +231,7 @@ legend {
 
 .frequency-grid-main {
   grid-template-columns: 1fr;
-  margin: 10px 0 8px;
+  margin: 14px 0 12px;
 }
 
 .stepper-row {
@@ -290,7 +290,8 @@ legend {
 }
 
 .frequency-slider-field {
-  margin-top: 2px;
+  margin-top: 8px;
+  margin-bottom: 18px;
 }
 
 .sweep-visual-grid {
@@ -405,7 +406,7 @@ legend {
 
 .btn-power-large {
   min-height: 72px;
-  margin-top: 12px;
+  margin-top: 20px;
   border-radius: 22px;
   border-width: 6px;
 }
@@ -702,7 +703,8 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .volume-field {
-  margin-top: 0;
+  margin-top: 18px;
+  margin-bottom: 20px;
 }
 
 .volume-row {
@@ -987,5 +989,6 @@ input[type="range"]::-moz-range-thumb {
 
   .btn-power-large {
     min-height: 78px;
+    margin-top: 22px;
   }
 }
