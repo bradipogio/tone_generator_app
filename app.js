@@ -10,7 +10,7 @@ const LONG_PRESS_MENU_DELAY_MS = 1000;
 const NOISE_BUFFER_SECONDS = 2;
 const FREQUENCY_SLIDER_MAX = 1000;
 const MANUAL_FREQUENCY_STEP = 1;
-const SCOPE_FPS = 30;
+const SCOPE_FPS = 12;
 const SCOPE_HEIGHT = 112;
 const PLAY_ICON_MARKUP =
   '<svg viewBox="0 0 32 32" focusable="false" aria-hidden="true"><path d="M11 8.5L23 16L11 23.5Z"/></svg>';
@@ -69,6 +69,7 @@ const audio = {
   rightGainNode: null,
   stopTimeoutId: null,
   switchTimeoutId: null,
+  suspendTimeoutId: null,
   playbackSessionRequested: false,
 };
 
@@ -235,6 +236,15 @@ function clearScope() {
   context.clearRect(0, 0, canvas.width, canvas.height);
 }
 
+function shouldDrawScope() {
+  return Boolean(
+    state.isPlaying &&
+      !document.hidden &&
+      audio.analyserNode &&
+      scopeState.buffer,
+  );
+}
+
 function getScopeSliceLength() {
   if (!audio.context || isNoiseMode()) {
     return scopeState.buffer ? scopeState.buffer.length : 0;
@@ -258,7 +268,7 @@ function findRisingZeroCrossing(buffer, maxIndex) {
 }
 
 function drawScope(timestamp = 0) {
-  if (!audio.analyserNode || !scopeState.buffer) {
+  if (!shouldDrawScope()) {
     clearScope();
     scopeState.frameId = null;
     return;
@@ -319,12 +329,53 @@ function drawScope(timestamp = 0) {
 }
 
 function startScope() {
-  if (scopeState.frameId) {
+  if (scopeState.frameId || !shouldDrawScope()) {
     return;
   }
 
   scopeState.lastDrawTimestamp = 0;
   scopeState.frameId = window.requestAnimationFrame(drawScope);
+}
+
+function stopScope() {
+  if (scopeState.frameId) {
+    window.cancelAnimationFrame(scopeState.frameId);
+    scopeState.frameId = null;
+  }
+
+  scopeState.lastDrawTimestamp = 0;
+  clearScope();
+}
+
+function cancelAudioSuspend() {
+  if (!audio.suspendTimeoutId) {
+    return;
+  }
+
+  window.clearTimeout(audio.suspendTimeoutId);
+  audio.suspendTimeoutId = null;
+}
+
+function scheduleAudioSuspend(delayMs = 0) {
+  if (!audio.context || state.isPlaying) {
+    return;
+  }
+
+  cancelAudioSuspend();
+
+  const safeDelayMs = audio.stopTimeoutId
+    ? Math.max(delayMs, (FADE_TIME + 0.03) * 1000)
+    : delayMs;
+
+  audio.suspendTimeoutId = window.setTimeout(() => {
+    audio.suspendTimeoutId = null;
+
+    if (!audio.context || state.isPlaying || audio.context.state !== "running") {
+      return;
+    }
+
+    audio.context.suspend().catch(() => {});
+  }, safeDelayMs);
 }
 
 function setAudioParamSmoothly(audioParam, value, timeConstant = PARAM_SMOOTHING) {
@@ -516,7 +567,6 @@ function ensureAudioGraph() {
   audio.analyserNode.connect(audio.context.destination);
 
   applyChannelRouting();
-  startScope();
 }
 
 function createWhiteNoiseBuffer(frameCount) {
@@ -651,6 +701,7 @@ function requestPlaybackAudioSession() {
 }
 
 async function ensureRunningContext() {
+  cancelAudioSuspend();
   requestPlaybackAudioSession();
   ensureAudioGraph();
 
@@ -673,6 +724,7 @@ async function startTone() {
   audio.masterGainNode.gain.linearRampToValueAtTime(state.volume, now + FADE_TIME);
 
   state.isPlaying = true;
+  startScope();
   updateStatus(getActiveSourceStatus());
   updateButtonState();
 }
@@ -684,9 +736,9 @@ function stopTone() {
 }
 
 function fadeOutAndStop(nextStatus = "Pronto") {
-
   if (!audio.context || !audio.masterGainNode) {
     state.isPlaying = false;
+    stopScope();
     updateStatus(nextStatus);
     updateButtonState();
     return;
@@ -703,10 +755,12 @@ function fadeOutAndStop(nextStatus = "Pronto") {
   audio.stopTimeoutId = window.setTimeout(() => {
     stopCurrentSource(sourceToStop);
     audio.stopTimeoutId = null;
+    scheduleAudioSuspend();
     updateStatus(nextStatus);
   }, (FADE_TIME + 0.02) * 1000);
 
   state.isPlaying = false;
+  stopScope();
   updateStatus(nextStatus);
   updateButtonState();
 }
@@ -966,6 +1020,36 @@ function bindScopeResize() {
   resizeScopeCanvas();
   clearScope();
   window.addEventListener("resize", resizeScopeCanvas, { passive: true });
+}
+
+function bindPageLifecycle() {
+  const stopForPowerSaving = () => {
+    stopScope();
+
+    if (state.isPlaying) {
+      stopSweep();
+      fadeOutAndStop("Pausa risparmio");
+      return;
+    }
+
+    scheduleAudioSuspend();
+  };
+
+  const syncPowerSavingState = () => {
+    if (document.hidden) {
+      stopForPowerSaving();
+      return;
+    }
+
+    if (state.isPlaying) {
+      startScope();
+    } else {
+      clearScope();
+    }
+  };
+
+  document.addEventListener("visibilitychange", syncPowerSavingState);
+  window.addEventListener("pagehide", stopForPowerSaving);
 }
 
 function bindPressAndHold(button, direction) {
@@ -1300,7 +1384,7 @@ function bindAudioUnlock() {
   const unlockAudio = () => {
     requestPlaybackAudioSession();
 
-    if (!audio.context || audio.context.state === "running") {
+    if (!state.isPlaying || !audio.context || audio.context.state === "running") {
       return;
     }
 
@@ -1436,6 +1520,7 @@ function init() {
   updateStatus("Pronto");
   bindAudioUnlock();
   bindScopeResize();
+  bindPageLifecycle();
   bindEvents();
 }
 
