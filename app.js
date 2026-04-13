@@ -78,7 +78,7 @@ const audio = {
   stopTimeoutId: null,
   switchTimeoutId: null,
   suspendTimeoutId: null,
-  playbackSessionRequested: false,
+  audioSessionType: "",
 };
 
 const sweepState = {
@@ -200,6 +200,34 @@ function formatCompactFrequency(value) {
   }
 
   return `${Math.round(value)}`;
+}
+
+function getMicErrorMessage(error) {
+  if (!window.isSecureContext) {
+    return "Serve HTTPS";
+  }
+
+  if (!error || !error.name) {
+    return "Mic non disponibile";
+  }
+
+  if (error.name === "NotAllowedError" || error.name === "SecurityError") {
+    return "Mic bloccato";
+  }
+
+  if (error.name === "NotFoundError") {
+    return "Mic assente";
+  }
+
+  if (error.name === "NotReadableError" || error.name === "AbortError") {
+    return "Mic occupato";
+  }
+
+  if (error.name === "OverconstrainedError") {
+    return "Mic non compatibile";
+  }
+
+  return "Mic non disponibile";
 }
 
 function sliderValueToLogValue(sliderValue, minValue, maxValue, sliderMax) {
@@ -541,6 +569,7 @@ function stopMicInput() {
   }
 
   audio.micAnalyserNode = null;
+  requestPlaybackAudioSession();
 }
 
 function scanIndexToFrequency(index) {
@@ -850,6 +879,12 @@ async function startMicScan() {
   stopMicInput();
   let micStream = null;
 
+  if (!window.isSecureContext) {
+    scanState.message = "Serve HTTPS";
+    drawScanGraph();
+    return false;
+  }
+
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
     scanState.message = "Mic non disponibile";
     drawScanGraph();
@@ -857,13 +892,23 @@ async function startMicScan() {
   }
 
   try {
-    micStream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        autoGainControl: false,
-        echoCancellation: false,
-        noiseSuppression: false,
-      },
-    });
+    requestMicAudioSession();
+
+    try {
+      micStream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          autoGainControl: false,
+          echoCancellation: false,
+          noiseSuppression: false,
+        },
+      });
+    } catch (constraintError) {
+      if (constraintError.name === "NotAllowedError" || constraintError.name === "SecurityError") {
+        throw constraintError;
+      }
+
+      micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    }
 
     ensureAudioGraph();
     audio.micStream = micStream;
@@ -886,7 +931,7 @@ async function startMicScan() {
       micStream.getTracks().forEach((track) => track.stop());
     }
 
-    scanState.message = "Mic negato";
+    scanState.message = getMicErrorMessage(error);
     drawScanGraph();
     return false;
   }
@@ -1226,23 +1271,33 @@ function createSource() {
   audio.sourceKind = "tone";
 }
 
-function requestPlaybackAudioSession() {
-  if (audio.playbackSessionRequested) {
-    return;
-  }
-
+function setAudioSessionType(type) {
   const audioSession = navigator.audioSession;
 
   if (!audioSession) {
-    return;
+    return false;
+  }
+
+  if (audio.audioSessionType === type) {
+    return true;
   }
 
   try {
-    audioSession.type = "playback";
-    audio.playbackSessionRequested = audioSession.type === "playback";
+    audioSession.type = type;
+    audio.audioSessionType = audioSession.type;
+    return audioSession.type === type;
   } catch (error) {
     // iOS/Safari support is partial; ignore and keep the existing fallback behavior.
+    return false;
   }
+}
+
+function requestPlaybackAudioSession() {
+  setAudioSessionType("playback");
+}
+
+function requestMicAudioSession() {
+  setAudioSessionType("play-and-record");
 }
 
 async function ensureRunningContext() {
