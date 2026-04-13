@@ -1397,6 +1397,34 @@ function bindAudioUnlock() {
   });
 }
 
+function isEditableTarget(target) {
+  return Boolean(
+    target instanceof HTMLElement &&
+      (target === elements.frequencyInput ||
+        target.closest("#frequencyInput") ||
+        target.isContentEditable),
+  );
+}
+
+function bindSelectionGuards() {
+  const preventControlSelection = (event) => {
+    if (isEditableTarget(event.target)) {
+      return;
+    }
+
+    if (
+      event.target instanceof HTMLElement &&
+      event.target.closest("button, label, input[type='range'], .app-shell")
+    ) {
+      event.preventDefault();
+    }
+  };
+
+  document.addEventListener("selectstart", preventControlSelection);
+  document.addEventListener("contextmenu", preventControlSelection);
+  document.addEventListener("dragstart", preventControlSelection);
+}
+
 function bindEvents() {
   elements.powerButton.addEventListener("click", () => {
     if (state.isPlaying) {
@@ -1522,6 +1550,7 @@ function init() {
   bindAudioUnlock();
   bindScopeResize();
   bindPageLifecycle();
+  bindSelectionGuards();
   bindEvents();
 }
 

@@ -32,9 +32,9 @@
 * {
   box-sizing: border-box;
   -webkit-tap-highlight-color: transparent;
-  -webkit-touch-callout: none;
-  -webkit-user-select: none;
-  user-select: none;
+  -webkit-touch-callout: none !important;
+  -webkit-user-select: none !important;
+  user-select: none !important;
 }
 
 .sr-only {
@@ -93,8 +93,9 @@ select {
 button {
   border: 0;
   cursor: pointer;
-  user-select: none;
-  -webkit-user-select: none;
+  -webkit-touch-callout: none !important;
+  -webkit-user-select: none !important;
+  user-select: none !important;
 }
 
 input,
@@ -112,9 +113,21 @@ select {
 }
 
 input[type="number"] {
-  -webkit-touch-callout: default;
-  -webkit-user-select: text;
-  user-select: text;
+  -webkit-touch-callout: default !important;
+  -webkit-user-select: text !important;
+  user-select: text !important;
+}
+
+button *,
+label *,
+.btn *,
+.channel-option *,
+.wave-button *,
+.tone-wave-menu-button *,
+.sweep-duration-option * {
+  -webkit-touch-callout: none !important;
+  -webkit-user-select: none !important;
+  user-select: none !important;
 }
 
 button:focus-visible,
