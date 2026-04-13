@@ -310,7 +310,7 @@ function drawScope(timestamp = 0) {
 
   context.beginPath();
   context.lineWidth = Math.max(1.5, (window.devicePixelRatio || 1) * 1.15);
-  context.strokeStyle = "#ffd54f";
+  context.strokeStyle = "#ffe14d";
 
   for (let point = 0; point < usableLength; point += 1) {
     const bufferIndex = startIndex + point;
