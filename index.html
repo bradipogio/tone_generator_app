@@ -240,7 +240,12 @@
         </div>
       </section>
 
-      <section class="scope-panel" aria-hidden="true">
+      <section id="scopePanel" class="scope-panel">
+        <div class="scan-nav" aria-label="Navigazione scan">
+          <span id="scanCounter" class="scan-counter">0</span>
+          <button id="scanPrevButton" class="scan-nav-button" type="button" aria-label="Scan precedente">&lt;</button>
+          <button id="scanNextButton" class="scan-nav-button" type="button" aria-label="Scan successivo">&gt;</button>
+        </div>
         <canvas id="waveformScope" class="waveform-scope"></canvas>
       </section>
     </main>

@@ -102,6 +102,8 @@ const scanState = {
   buffer: null,
   values: Array(RESPONSE_BIN_COUNT).fill(Number.NEGATIVE_INFINITY),
   peaks: [],
+  history: [],
+  selectedIndex: -1,
   message: "",
   currentFrequency: null,
   minFrequency: 20,
@@ -135,6 +137,10 @@ const elements = {
   toneMenuButtons: Array.from(document.querySelectorAll("[data-wave-menu-item]")),
   channelInputs: Array.from(document.querySelectorAll('input[name="channel"]')),
   sweepDurationInputs: Array.from(document.querySelectorAll('input[name="sweepDuration"]')),
+  scopePanel: document.getElementById("scopePanel"),
+  scanCounter: document.getElementById("scanCounter"),
+  scanPrevButton: document.getElementById("scanPrevButton"),
+  scanNextButton: document.getElementById("scanNextButton"),
   waveformScope: document.getElementById("waveformScope"),
 };
 
@@ -394,6 +400,77 @@ function resetMicScan() {
   scanState.values = Array(RESPONSE_BIN_COUNT).fill(Number.NEGATIVE_INFINITY);
   scanState.minFrequency = Math.max(Math.min(state.sweep.start, state.sweep.end), MIN_FREQUENCY);
   scanState.maxFrequency = Math.min(Math.max(state.sweep.start, state.sweep.end), MAX_FREQUENCY);
+  updateScanNav();
+}
+
+function getVisibleScan() {
+  if (scanState.isActive || scanState.isComplete || scanState.message) {
+    return scanState;
+  }
+
+  if (scanState.selectedIndex >= 0) {
+    return scanState.history[scanState.selectedIndex] || null;
+  }
+
+  return null;
+}
+
+function updateScanNav() {
+  const total = scanState.history.length;
+  const number = total ? scanState.selectedIndex + 1 : 0;
+  const isLocked = scanState.isActive;
+
+  elements.scanCounter.parentElement.classList.toggle("is-empty", total === 0);
+  elements.scanCounter.textContent = total ? String(number) : "0";
+  elements.scanPrevButton.disabled = isLocked || total <= 1 || scanState.selectedIndex <= 0;
+  elements.scanNextButton.disabled = isLocked || total <= 1 || scanState.selectedIndex >= total - 1;
+}
+
+function showScanAt(index) {
+  if (!scanState.history.length) {
+    scanState.selectedIndex = -1;
+    updateScanNav();
+    return;
+  }
+
+  scanState.isActive = false;
+  scanState.isComplete = false;
+  scanState.message = "";
+  scanState.selectedIndex = clamp(index, 0, scanState.history.length - 1);
+  updateScanNav();
+  drawScanGraph();
+}
+
+function shiftVisibleScan(direction) {
+  if (scanState.isActive || !scanState.history.length) {
+    return;
+  }
+
+  showScanAt(scanState.selectedIndex + direction);
+}
+
+function saveCurrentScanToHistory() {
+  const hasValues = scanState.values.some(Number.isFinite);
+
+  if (!hasValues) {
+    updateScanNav();
+    return;
+  }
+
+  scanState.history.push({
+    values: [...scanState.values],
+    peaks: scanState.peaks.map((peak) => ({ ...peak })),
+    message: scanState.message,
+    minFrequency: scanState.minFrequency,
+    maxFrequency: scanState.maxFrequency,
+  });
+
+  if (scanState.history.length > 5) {
+    scanState.history.shift();
+  }
+
+  scanState.selectedIndex = scanState.history.length - 1;
+  updateScanNav();
 }
 
 function stopMicInput() {
@@ -553,7 +630,7 @@ function findScanPeaks() {
   }
 
   return candidates
-    .sort((a, b) => b.prominence - a.prominence)
+    .sort((a, b) => b.level - a.level || b.prominence - a.prominence)
     .reduce((peaks, candidate) => {
       if (peaks.length >= RESPONSE_PEAK_COUNT) {
         return peaks;
@@ -573,6 +650,10 @@ function findScanPeaks() {
 function drawScanGraph() {
   resizeScopeCanvas();
 
+  const visibleScan = getVisibleScan();
+  const values = visibleScan ? visibleScan.values : scanState.values;
+  const peaks = visibleScan ? visibleScan.peaks : scanState.peaks;
+  const message = visibleScan ? visibleScan.message : scanState.message;
   const canvas = elements.waveformScope;
   const context = getScopeContext();
   const width = canvas.width;
@@ -584,7 +665,7 @@ function drawScanGraph() {
   const bottom = height - 14 * dpr;
   const graphWidth = Math.max(right - left, 1);
   const graphHeight = Math.max(bottom - top, 1);
-  const finiteValues = scanState.values.filter(Number.isFinite);
+  const finiteValues = values.filter(Number.isFinite);
   const minLevel = finiteValues.length
     ? Math.min(...finiteValues, Math.max(...finiteValues) - 24)
     : RESPONSE_MIN_DB;
@@ -613,7 +694,7 @@ function drawScanGraph() {
     context.fillStyle = "#ffe14d";
     context.font = `${Math.round(13 * dpr)}px "Avenir Next", "Segoe UI", sans-serif`;
     context.textBaseline = "middle";
-    context.fillText(scanState.message || "SCAN", left, height * 0.5);
+    context.fillText(message || "SCAN", left, height * 0.5);
     return;
   }
 
@@ -623,7 +704,7 @@ function drawScanGraph() {
   context.lineJoin = "round";
   context.lineCap = "round";
 
-  scanState.values.forEach((level, index) => {
+  values.forEach((level, index) => {
     if (!Number.isFinite(level)) {
       return;
     }
@@ -631,7 +712,7 @@ function drawScanGraph() {
     const x = xForIndex(index);
     const y = yForLevel(level);
 
-    if (!index || !Number.isFinite(scanState.values[index - 1])) {
+    if (!index || !Number.isFinite(values[index - 1])) {
       context.moveTo(x, y);
       return;
     }
@@ -651,14 +732,14 @@ function drawScanGraph() {
     context.stroke();
   }
 
-  if (!scanState.isComplete) {
+  if (scanState.isActive) {
     return;
   }
 
   context.font = `${Math.round(11 * dpr)}px "Avenir Next", "Segoe UI", sans-serif`;
   context.textBaseline = "middle";
 
-  scanState.peaks.forEach((peak) => {
+  peaks.forEach((peak) => {
     const x = xForIndex(peak.index);
     const y = yForLevel(peak.level);
     const label =
@@ -707,6 +788,7 @@ function finishMicScan() {
   scanState.isComplete = true;
   scanState.peaks = findScanPeaks();
   scanState.message = scanState.peaks.length ? "" : "Nessun picco netto";
+  saveCurrentScanToHistory();
   drawScanGraph();
 }
 
@@ -742,6 +824,7 @@ async function startMicScan() {
     scanState.buffer = new Float32Array(audio.micAnalyserNode.frequencyBinCount);
     scanState.isActive = true;
     scanState.isComplete = false;
+    updateScanNav();
     scanState.frameId = window.requestAnimationFrame(drawMicScanFrame);
     stopScope();
     return true;
@@ -1847,6 +1930,85 @@ function bindSelectionGuards() {
   document.addEventListener("dragstart", preventControlSelection);
 }
 
+function bindScanNavigation() {
+  let startX = 0;
+  let startY = 0;
+  let activePointerId = null;
+  let wheelLockId = null;
+
+  elements.scanPrevButton.addEventListener("click", () => {
+    shiftVisibleScan(-1);
+  });
+
+  elements.scanNextButton.addEventListener("click", () => {
+    shiftVisibleScan(1);
+  });
+
+  elements.scopePanel.addEventListener(
+    "wheel",
+    (event) => {
+      if (scanState.history.length <= 1) {
+        return;
+      }
+
+      const horizontalDelta = Math.abs(event.deltaX) > Math.abs(event.deltaY) || event.shiftKey;
+
+      if (!horizontalDelta) {
+        return;
+      }
+
+      event.preventDefault();
+
+      if (wheelLockId) {
+        return;
+      }
+
+      shiftVisibleScan(event.deltaX > 0 || event.deltaY > 0 ? 1 : -1);
+      wheelLockId = window.setTimeout(() => {
+        wheelLockId = null;
+      }, 260);
+    },
+    { passive: false },
+  );
+
+  elements.scopePanel.addEventListener("pointerdown", (event) => {
+    if (event.target instanceof Element && event.target.closest(".scan-nav")) {
+      return;
+    }
+
+    activePointerId = event.pointerId;
+    startX = event.clientX;
+    startY = event.clientY;
+  });
+
+  elements.scopePanel.addEventListener("pointerup", (event) => {
+    if (event.pointerId !== activePointerId) {
+      return;
+    }
+
+    activePointerId = null;
+
+    if (scanState.history.length <= 1) {
+      return;
+    }
+
+    const deltaX = event.clientX - startX;
+    const deltaY = event.clientY - startY;
+
+    if (Math.abs(deltaX) < 42 || Math.abs(deltaX) < Math.abs(deltaY) * 1.3) {
+      return;
+    }
+
+    shiftVisibleScan(deltaX < 0 ? 1 : -1);
+  });
+
+  ["pointercancel", "lostpointercapture"].forEach((eventName) => {
+    elements.scopePanel.addEventListener(eventName, () => {
+      activePointerId = null;
+    });
+  });
+}
+
 function bindEvents() {
   elements.powerButton.addEventListener("click", () => {
     if (state.isPlaying) {
@@ -1969,10 +2131,12 @@ function bindEvents() {
 function init() {
   syncAllUI();
   updateStatus("Pronto");
+  updateScanNav();
   bindAudioUnlock();
   bindScopeResize();
   bindPageLifecycle();
   bindSelectionGuards();
+  bindScanNavigation();
   bindEvents();
 }
 
