@@ -656,6 +656,7 @@ input[type="range"] {
   padding: 0;
   border: 0;
   background: transparent;
+  box-shadow: none !important;
   touch-action: none;
 }
 
@@ -854,18 +855,22 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .dual-range {
+  --dual-track-top: 38px;
+  --dual-track-height: 14px;
+  --dual-track-border: 3px;
   position: relative;
   height: 64px;
   padding-top: 26px;
 }
 
 .dual-range::before {
+  box-sizing: border-box;
   content: "";
   position: absolute;
   left: 0;
   right: 0;
-  top: 38px;
-  height: 14px;
+  top: var(--dual-track-top);
+  height: var(--dual-track-height);
   border-radius: var(--radius-sm);
   background: #ffffff;
   pointer-events: none;
@@ -873,13 +878,14 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .dual-range::after {
+  box-sizing: border-box;
   content: "";
   position: absolute;
   left: 0;
   right: 0;
-  top: 38px;
-  height: 14px;
-  border: 3px solid var(--ink);
+  top: var(--dual-track-top);
+  height: var(--dual-track-height);
+  border: var(--dual-track-border) solid var(--ink);
   border-radius: var(--radius-sm);
   pointer-events: none;
   z-index: 3;
@@ -887,8 +893,8 @@ input[type="range"]::-moz-range-thumb {
 
 .dual-range-fill {
   position: absolute;
-  top: 41px;
-  height: 8px;
+  top: calc(var(--dual-track-top) + var(--dual-track-border));
+  height: calc(var(--dual-track-height) - (var(--dual-track-border) * 2));
   border-radius: 3px;
   background: var(--accent-pink);
   pointer-events: none;
@@ -958,11 +964,15 @@ input[type="range"]::-moz-range-thumb {
 
 .range-start::-webkit-slider-thumb,
 .range-end::-webkit-slider-thumb {
+  background: var(--thumb-color);
+  opacity: 1;
   pointer-events: auto;
 }
 
 .range-start::-moz-range-thumb,
 .range-end::-moz-range-thumb {
+  background: var(--thumb-color);
+  opacity: 1;
   pointer-events: auto;
 }
 
@@ -1161,17 +1171,9 @@ input[type="range"]::-moz-range-thumb {
   }
 
   .dual-range {
+    --dual-track-top: 34px;
     height: 58px;
     padding-top: 22px;
-  }
-
-  .dual-range::before,
-  .dual-range::after {
-    top: 34px;
-  }
-
-  .dual-range-fill {
-    top: 37px;
   }
 
   .range-badge {
