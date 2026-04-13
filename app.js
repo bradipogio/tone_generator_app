@@ -12,6 +12,11 @@ const FREQUENCY_SLIDER_MAX = 1000;
 const MANUAL_FREQUENCY_STEP = 1;
 const SCOPE_FPS = 12;
 const SCOPE_HEIGHT = 112;
+const MIC_FFT_SIZE = 8192;
+const RESPONSE_BIN_COUNT = 180;
+const RESPONSE_PEAK_COUNT = 5;
+const RESPONSE_MIN_DB = -96;
+const RESPONSE_MIN_PROMINENCE_DB = 3;
 const PLAY_ICON_MARKUP =
   '<svg viewBox="0 0 32 32" focusable="false" aria-hidden="true"><path d="M11 8.5L23 16L11 23.5Z"/></svg>';
 const STOP_ICON_MARKUP =
@@ -65,6 +70,9 @@ const audio = {
   masterGainNode: null,
   mergerNode: null,
   analyserNode: null,
+  micStream: null,
+  micSourceNode: null,
+  micAnalyserNode: null,
   leftGainNode: null,
   rightGainNode: null,
   stopTimeoutId: null,
@@ -85,6 +93,19 @@ const scopeState = {
   frameId: null,
   lastDrawTimestamp: 0,
   buffer: null,
+};
+
+const scanState = {
+  isActive: false,
+  isComplete: false,
+  frameId: null,
+  buffer: null,
+  values: Array(RESPONSE_BIN_COUNT).fill(Number.NEGATIVE_INFINITY),
+  peaks: [],
+  message: "",
+  currentFrequency: null,
+  minFrequency: 20,
+  maxFrequency: 1000,
 };
 
 const elements = {
@@ -160,6 +181,16 @@ function parseFrequency(value, fallback = state.frequency) {
 
 function formatFrequency(value) {
   return Math.round(value).toLocaleString("it-IT");
+}
+
+function formatCompactFrequency(value) {
+  if (value >= 1000) {
+    return `${(value / 1000).toLocaleString("it-IT", {
+      maximumFractionDigits: value >= 10000 ? 0 : 1,
+    })} k`;
+  }
+
+  return `${Math.round(value)}`;
 }
 
 function sliderValueToLogValue(sliderValue, minValue, maxValue, sliderMax) {
@@ -345,7 +376,384 @@ function stopScope() {
   }
 
   scopeState.lastDrawTimestamp = 0;
+
+  if (scanState.isActive || scanState.isComplete || scanState.message) {
+    drawScanGraph();
+    return;
+  }
+
   clearScope();
+}
+
+function resetMicScan() {
+  scanState.isActive = false;
+  scanState.isComplete = false;
+  scanState.message = "";
+  scanState.currentFrequency = null;
+  scanState.peaks = [];
+  scanState.values = Array(RESPONSE_BIN_COUNT).fill(Number.NEGATIVE_INFINITY);
+  scanState.minFrequency = Math.max(Math.min(state.sweep.start, state.sweep.end), MIN_FREQUENCY);
+  scanState.maxFrequency = Math.min(Math.max(state.sweep.start, state.sweep.end), MAX_FREQUENCY);
+}
+
+function stopMicInput() {
+  if (scanState.frameId) {
+    window.cancelAnimationFrame(scanState.frameId);
+    scanState.frameId = null;
+  }
+
+  if (audio.micSourceNode) {
+    audio.micSourceNode.disconnect();
+    audio.micSourceNode = null;
+  }
+
+  if (audio.micStream) {
+    audio.micStream.getTracks().forEach((track) => track.stop());
+    audio.micStream = null;
+  }
+
+  audio.micAnalyserNode = null;
+}
+
+function scanIndexToFrequency(index) {
+  const safeMin = Math.max(scanState.minFrequency, MIN_FREQUENCY);
+  const safeMax = Math.max(scanState.maxFrequency, safeMin + 1);
+  const ratio = clamp(index / Math.max(RESPONSE_BIN_COUNT - 1, 1), 0, 1);
+  const exponent = Math.log10(safeMin) + ratio * (Math.log10(safeMax) - Math.log10(safeMin));
+
+  return 10 ** exponent;
+}
+
+function frequencyToScanIndex(frequency) {
+  const safeMin = Math.max(scanState.minFrequency, MIN_FREQUENCY);
+  const safeMax = Math.max(scanState.maxFrequency, safeMin + 1);
+  const ratio =
+    (Math.log10(clamp(frequency, safeMin, safeMax)) - Math.log10(safeMin)) /
+    (Math.log10(safeMax) - Math.log10(safeMin));
+
+  return Math.round(clamp(ratio, 0, 1) * (RESPONSE_BIN_COUNT - 1));
+}
+
+function getMicLevelAtFrequency(frequency) {
+  if (!audio.micAnalyserNode || !scanState.buffer || !audio.context) {
+    return null;
+  }
+
+  audio.micAnalyserNode.getFloatFrequencyData(scanState.buffer);
+
+  const binWidth = audio.context.sampleRate / audio.micAnalyserNode.fftSize;
+  const centerBin = Math.round(frequency / binWidth);
+  const startBin = clamp(centerBin - 2, 0, scanState.buffer.length - 1);
+  const endBin = clamp(centerBin + 2, 0, scanState.buffer.length - 1);
+  let total = 0;
+  let count = 0;
+
+  for (let bin = startBin; bin <= endBin; bin += 1) {
+    const value = scanState.buffer[bin];
+
+    if (Number.isFinite(value)) {
+      total += value;
+      count += 1;
+    }
+  }
+
+  if (!count) {
+    return null;
+  }
+
+  return clamp(total / count, RESPONSE_MIN_DB, 0);
+}
+
+function captureMicScanPoint() {
+  if (!scanState.isActive) {
+    return;
+  }
+
+  const frequency = clamp(state.frequency, scanState.minFrequency, scanState.maxFrequency);
+  const level = getMicLevelAtFrequency(frequency);
+
+  if (level === null) {
+    return;
+  }
+
+  const index = frequencyToScanIndex(frequency);
+  scanState.values[index] = Math.max(scanState.values[index], level);
+  scanState.currentFrequency = frequency;
+}
+
+function getSmoothedScanValues() {
+  return scanState.values.map((value, index, values) => {
+    if (!Number.isFinite(value)) {
+      return value;
+    }
+
+    let total = value;
+    let count = 1;
+
+    for (let offset = -2; offset <= 2; offset += 1) {
+      if (offset === 0) {
+        continue;
+      }
+
+      const neighbor = values[index + offset];
+
+      if (Number.isFinite(neighbor)) {
+        total += neighbor;
+        count += 1;
+      }
+    }
+
+    return total / count;
+  });
+}
+
+function findScanPeaks() {
+  const values = getSmoothedScanValues();
+  const candidates = [];
+  const minPeakDistance = Math.max(8, Math.round(RESPONSE_BIN_COUNT / 24));
+
+  for (let index = 2; index < values.length - 2; index += 1) {
+    const value = values[index];
+
+    if (!Number.isFinite(value) || value < values[index - 1] || value < values[index + 1]) {
+      continue;
+    }
+
+    const baselineValues = [];
+
+    for (let offset = -8; offset <= 8; offset += 1) {
+      if (Math.abs(offset) <= 2) {
+        continue;
+      }
+
+      const baselineValue = values[index + offset];
+
+      if (Number.isFinite(baselineValue)) {
+        baselineValues.push(baselineValue);
+      }
+    }
+
+    if (baselineValues.length < 3) {
+      continue;
+    }
+
+    const baseline =
+      baselineValues.reduce((total, baselineValue) => total + baselineValue, 0) /
+      baselineValues.length;
+    const prominence = value - baseline;
+
+    if (prominence >= RESPONSE_MIN_PROMINENCE_DB) {
+      candidates.push({
+        frequency: scanIndexToFrequency(index),
+        index,
+        level: value,
+        prominence,
+      });
+    }
+  }
+
+  return candidates
+    .sort((a, b) => b.prominence - a.prominence)
+    .reduce((peaks, candidate) => {
+      if (peaks.length >= RESPONSE_PEAK_COUNT) {
+        return peaks;
+      }
+
+      const isTooClose = peaks.some((peak) => Math.abs(peak.index - candidate.index) < minPeakDistance);
+
+      if (!isTooClose) {
+        peaks.push(candidate);
+      }
+
+      return peaks;
+    }, [])
+    .sort((a, b) => a.frequency - b.frequency);
+}
+
+function drawScanGraph() {
+  resizeScopeCanvas();
+
+  const canvas = elements.waveformScope;
+  const context = getScopeContext();
+  const width = canvas.width;
+  const height = canvas.height;
+  const dpr = window.devicePixelRatio || 1;
+  const left = 10 * dpr;
+  const right = width - 10 * dpr;
+  const top = 12 * dpr;
+  const bottom = height - 14 * dpr;
+  const graphWidth = Math.max(right - left, 1);
+  const graphHeight = Math.max(bottom - top, 1);
+  const finiteValues = scanState.values.filter(Number.isFinite);
+  const minLevel = finiteValues.length
+    ? Math.min(...finiteValues, Math.max(...finiteValues) - 24)
+    : RESPONSE_MIN_DB;
+  const maxLevel = finiteValues.length ? Math.max(...finiteValues) + 3 : -30;
+  const levelRange = Math.max(maxLevel - minLevel, 12);
+
+  const xForIndex = (index) => left + (index / Math.max(RESPONSE_BIN_COUNT - 1, 1)) * graphWidth;
+  const yForLevel = (level) => bottom - ((level - minLevel) / levelRange) * graphHeight;
+
+  context.clearRect(0, 0, width, height);
+  context.fillStyle = "#080808";
+  context.fillRect(0, 0, width, height);
+
+  context.strokeStyle = "#333333";
+  context.lineWidth = Math.max(1, dpr);
+
+  for (let line = 0; line <= 3; line += 1) {
+    const y = top + (graphHeight / 3) * line;
+    context.beginPath();
+    context.moveTo(left, y);
+    context.lineTo(right, y);
+    context.stroke();
+  }
+
+  if (!finiteValues.length) {
+    context.fillStyle = "#ffe14d";
+    context.font = `${Math.round(13 * dpr)}px "Avenir Next", "Segoe UI", sans-serif`;
+    context.textBaseline = "middle";
+    context.fillText(scanState.message || "SCAN", left, height * 0.5);
+    return;
+  }
+
+  context.beginPath();
+  context.strokeStyle = "#ffe14d";
+  context.lineWidth = Math.max(3, 3 * dpr);
+  context.lineJoin = "round";
+  context.lineCap = "round";
+
+  scanState.values.forEach((level, index) => {
+    if (!Number.isFinite(level)) {
+      return;
+    }
+
+    const x = xForIndex(index);
+    const y = yForLevel(level);
+
+    if (!index || !Number.isFinite(scanState.values[index - 1])) {
+      context.moveTo(x, y);
+      return;
+    }
+
+    context.lineTo(x, y);
+  });
+
+  context.stroke();
+
+  if (scanState.isActive && scanState.currentFrequency) {
+    const currentX = xForIndex(frequencyToScanIndex(scanState.currentFrequency));
+    context.strokeStyle = "#36c9ff";
+    context.lineWidth = Math.max(2, 2 * dpr);
+    context.beginPath();
+    context.moveTo(currentX, top);
+    context.lineTo(currentX, bottom);
+    context.stroke();
+  }
+
+  if (!scanState.isComplete) {
+    return;
+  }
+
+  context.font = `${Math.round(11 * dpr)}px "Avenir Next", "Segoe UI", sans-serif`;
+  context.textBaseline = "middle";
+
+  scanState.peaks.forEach((peak) => {
+    const x = xForIndex(peak.index);
+    const y = yForLevel(peak.level);
+    const label =
+      peak.frequency >= 1000
+        ? `${formatCompactFrequency(peak.frequency)}Hz`
+        : `${formatCompactFrequency(peak.frequency)} Hz`;
+    const labelWidth = context.measureText(label).width + 10 * dpr;
+    const labelHeight = 17 * dpr;
+    const labelX = clamp(x - labelWidth * 0.5, left, right - labelWidth);
+    const labelY = clamp(y + 10 * dpr, top, bottom - labelHeight);
+
+    context.strokeStyle = "#ff73c7";
+    context.lineWidth = Math.max(2, 2 * dpr);
+    context.beginPath();
+    context.moveTo(x, y);
+    context.lineTo(x, labelY);
+    context.stroke();
+
+    context.fillStyle = "#ffe14d";
+    context.fillRect(labelX, labelY, labelWidth, labelHeight);
+    context.strokeStyle = "#080808";
+    context.lineWidth = Math.max(2, 2 * dpr);
+    context.strokeRect(labelX, labelY, labelWidth, labelHeight);
+    context.fillStyle = "#080808";
+    context.fillText(label, labelX + 5 * dpr, labelY + labelHeight * 0.55);
+  });
+}
+
+function drawMicScanFrame() {
+  if (!scanState.isActive) {
+    return;
+  }
+
+  captureMicScanPoint();
+  drawScanGraph();
+  scanState.frameId = window.requestAnimationFrame(drawMicScanFrame);
+}
+
+function finishMicScan() {
+  if (!scanState.isActive && !scanState.isComplete) {
+    return;
+  }
+
+  stopMicInput();
+  scanState.isActive = false;
+  scanState.isComplete = true;
+  scanState.peaks = findScanPeaks();
+  scanState.message = scanState.peaks.length ? "" : "Nessun picco netto";
+  drawScanGraph();
+}
+
+async function startMicScan() {
+  resetMicScan();
+  stopMicInput();
+  let micStream = null;
+
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    scanState.message = "Mic non disponibile";
+    drawScanGraph();
+    return false;
+  }
+
+  try {
+    micStream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        autoGainControl: false,
+        echoCancellation: false,
+        noiseSuppression: false,
+      },
+    });
+
+    ensureAudioGraph();
+    audio.micStream = micStream;
+    audio.micSourceNode = audio.context.createMediaStreamSource(micStream);
+    audio.micAnalyserNode = audio.context.createAnalyser();
+    audio.micAnalyserNode.fftSize = MIC_FFT_SIZE;
+    audio.micAnalyserNode.minDecibels = RESPONSE_MIN_DB;
+    audio.micAnalyserNode.maxDecibels = 0;
+    audio.micAnalyserNode.smoothingTimeConstant = 0.18;
+    audio.micSourceNode.connect(audio.micAnalyserNode);
+    scanState.buffer = new Float32Array(audio.micAnalyserNode.frequencyBinCount);
+    scanState.isActive = true;
+    scanState.isComplete = false;
+    scanState.frameId = window.requestAnimationFrame(drawMicScanFrame);
+    stopScope();
+    return true;
+  } catch (error) {
+    if (micStream) {
+      micStream.getTracks().forEach((track) => track.stop());
+    }
+
+    scanState.message = "Mic negato";
+    drawScanGraph();
+    return false;
+  }
 }
 
 function cancelAudioSuspend() {
@@ -522,10 +930,10 @@ function updateButtonState() {
   elements.powerIcon.innerHTML = state.isPlaying ? STOP_ICON_MARKUP : PLAY_ICON_MARKUP;
   elements.toggleSweepButton.disabled = disabledForNoise;
   elements.toggleSweepButton.classList.toggle("is-on", state.isSweepActive);
-  elements.toggleSweepButton.textContent = state.isSweepActive ? "Stop" : "Sweep";
+  elements.toggleSweepButton.textContent = state.isSweepActive ? "Stop" : "Scan";
   elements.toggleSweepButton.setAttribute(
     "aria-label",
-    state.isSweepActive ? "Ferma sweep" : "Avvia sweep",
+    state.isSweepActive ? "Ferma scan" : "Avvia scan",
   );
 }
 
@@ -725,7 +1133,11 @@ async function startTone() {
   audio.masterGainNode.gain.linearRampToValueAtTime(state.volume, now + FADE_TIME);
 
   state.isPlaying = true;
-  startScope();
+
+  if (!scanState.isActive) {
+    startScope();
+  }
+
   updateStatus(getActiveSourceStatus());
   updateButtonState();
 }
@@ -875,6 +1287,10 @@ function stopSweep() {
     sweepState.frameId = null;
   }
 
+  if (scanState.isActive) {
+    finishMicScan();
+  }
+
   sweepState.lastTimestamp = 0;
   sweepState.progress = 0;
 
@@ -907,7 +1323,8 @@ function advanceSweep(timestamp) {
       sweepState.frameId = null;
       sweepState.lastTimestamp = 0;
       sweepState.progress = 0;
-      fadeOutAndStop("Sweep completo");
+      finishMicScan();
+      fadeOutAndStop(scanState.isComplete ? "Scan completo" : "Sweep completo");
       return;
     }
 
@@ -984,10 +1401,11 @@ async function startSweep() {
     return;
   }
 
+  const hasMicScan = await startMicScan();
   state.isSweepActive = true;
   await startTone();
   sweepState.lastTimestamp = 0;
-  updateStatus("Sweep attivo");
+  updateStatus(hasMicScan ? "Scan attivo" : "Sweep attivo");
   updateButtonState();
   sweepState.frameId = window.requestAnimationFrame(advanceSweep);
 }
@@ -1019,7 +1437,11 @@ function closeToneWaveMenu() {
 
 function bindScopeResize() {
   resizeScopeCanvas();
-  clearScope();
+  if (scanState.isActive || scanState.isComplete || scanState.message) {
+    drawScanGraph();
+  } else {
+    clearScope();
+  }
   window.addEventListener("resize", resizeScopeCanvas, { passive: true });
 }
 
@@ -1399,10 +1821,10 @@ function bindAudioUnlock() {
 
 function isEditableTarget(target) {
   return Boolean(
-    target instanceof HTMLElement &&
+    target instanceof Element &&
       (target === elements.frequencyInput ||
         target.closest("#frequencyInput") ||
-        target.isContentEditable),
+        (target instanceof HTMLElement && target.isContentEditable)),
   );
 }
 
@@ -1413,7 +1835,7 @@ function bindSelectionGuards() {
     }
 
     if (
-      event.target instanceof HTMLElement &&
+      event.target instanceof Element &&
       event.target.closest("button, label, input[type='range'], .app-shell")
     ) {
       event.preventDefault();
