@@ -315,10 +315,10 @@ function drawIdleScopeTitle() {
   const dpr = window.devicePixelRatio || 1;
   const titlePattern = [
     "1111011110100101111",
-    "0110010010110101000",
-    "0110010010101101110",
-    "0110010010100101000",
-    "0110011110100101111",
+    "0010010010110101000",
+    "0010010010101101110",
+    "0010010010100101000",
+    "0010011110100101111",
   ];
   const rows = titlePattern.length;
   const columns = titlePattern[0].length;
@@ -339,7 +339,7 @@ function drawIdleScopeTitle() {
   const titleHeight = rows * block + (rows - 1) * gap;
   const startX = (width - titleWidth) * 0.5;
   const startY = Math.max(paddingY, (titleAreaHeight - titleHeight) * 0.5);
-  const subtitleSize = Math.max(9, Math.min(12 * dpr, width / 24));
+  const subtitleSize = Math.max(11, Math.min(15 * dpr, width / 18));
 
   context.clearRect(0, 0, width, height);
   context.fillStyle = "#080808";
