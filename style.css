@@ -642,7 +642,7 @@ input[type="range"]::-webkit-slider-runnable-track {
   border: 3px solid var(--ink);
   border-radius: var(--radius-sm);
   background: #ffffff;
-  box-shadow: var(--shadow-pressed);
+  box-shadow: none;
 }
 
 input[type="range"]::-webkit-slider-thumb {
@@ -661,7 +661,7 @@ input[type="range"]::-moz-range-track {
   border: 3px solid var(--ink);
   border-radius: var(--radius-sm);
   background: #ffffff;
-  box-shadow: var(--shadow-pressed);
+  box-shadow: none;
 }
 
 input[type="range"]::-moz-range-thumb {
@@ -844,20 +844,33 @@ input[type="range"]::-moz-range-thumb {
   right: 0;
   top: 38px;
   height: 14px;
-  border: 3px solid var(--ink);
   border-radius: var(--radius-sm);
   background: #ffffff;
-  box-shadow: var(--shadow-pressed);
   pointer-events: none;
+  z-index: 0;
+}
+
+.dual-range::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 38px;
+  height: 14px;
+  border: 3px solid var(--ink);
+  border-radius: var(--radius-sm);
+  pointer-events: none;
+  z-index: 3;
 }
 
 .dual-range-fill {
   position: absolute;
-  top: 38px;
-  height: 14px;
-  border-radius: var(--radius-sm);
+  top: 41px;
+  height: 8px;
+  border-radius: 3px;
   background: var(--accent-pink);
   pointer-events: none;
+  z-index: 1;
 }
 
 .dual-range input {
@@ -867,6 +880,7 @@ input[type="range"]::-moz-range-thumb {
   bottom: 0;
   margin: 0;
   pointer-events: auto;
+  z-index: 4;
 }
 
 .range-badge {
@@ -899,11 +913,17 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .dual-range input::-webkit-slider-runnable-track {
+  height: 14px;
+  border: 0;
   background: transparent;
+  box-shadow: none;
 }
 
 .dual-range input::-moz-range-track {
+  height: 14px;
+  border: 0;
   background: transparent;
+  box-shadow: none;
 }
 
 .range-start {
@@ -1015,5 +1035,138 @@ input[type="range"]::-moz-range-thumb {
   .btn-power-large {
     min-height: 78px;
     margin-top: 22px;
+  }
+}
+
+@media (max-width: 390px) and (max-height: 850px) {
+  :root {
+    --shadow: 4px 4px 0 #080808;
+    --shadow-small: 3px 3px 0 #080808;
+    --shadow-pressed: 1px 1px 0 #080808;
+  }
+
+  body {
+    background-size: 36px 36px;
+  }
+
+  .app-shell {
+    max-width: 390px;
+    padding: max(8px, env(safe-area-inset-top)) 8px max(10px, env(safe-area-inset-bottom));
+  }
+
+  .panel {
+    margin-top: 10px;
+    padding: 9px;
+    border-width: 3px;
+  }
+
+  .panel-sweep {
+    margin-top: 12px;
+    padding-top: 10px;
+  }
+
+  .scope-panel {
+    margin-top: 12px;
+    min-height: 76px;
+    border-width: 3px;
+  }
+
+  .waveform-scope {
+    height: 76px;
+  }
+
+  .channel-field {
+    margin-bottom: 8px;
+  }
+
+  .channel-option span {
+    min-height: 40px;
+  }
+
+  .frequency-grid-main {
+    margin: 10px 0 8px;
+  }
+
+  .stepper-row-main {
+    grid-template-columns: 48px minmax(0, 1fr) 48px;
+    gap: 6px;
+  }
+
+  .btn-step {
+    min-height: 40px;
+  }
+
+  .frequency-input-shell {
+    min-height: 48px;
+    padding: 0 12px;
+    border-width: 3px;
+  }
+
+  .frequency-input {
+    font-size: 1.75rem;
+  }
+
+  .frequency-slider-field {
+    margin-top: 6px;
+    margin-bottom: 12px;
+  }
+
+  .wave-picker {
+    margin-top: 8px;
+    margin-bottom: 8px;
+  }
+
+  .wave-button-face,
+  .tone-wave-menu-button {
+    min-height: 50px;
+    border-width: 3px;
+  }
+
+  .wave-icon {
+    height: 20px;
+  }
+
+  .volume-field {
+    margin-top: 12px;
+    margin-bottom: 14px;
+  }
+
+  .btn-power-large {
+    min-height: 60px;
+    margin-top: 14px;
+    border-width: 3px;
+    box-shadow: 5px 5px 0 var(--ink);
+  }
+
+  .dual-range {
+    height: 58px;
+    padding-top: 22px;
+  }
+
+  .dual-range::before,
+  .dual-range::after {
+    top: 34px;
+  }
+
+  .dual-range-fill {
+    top: 37px;
+  }
+
+  .range-badge {
+    min-width: 50px;
+    padding: 3px 7px;
+  }
+
+  .sweep-duration-group {
+    gap: 8px;
+  }
+
+  .sweep-duration-option span {
+    min-height: 40px;
+  }
+
+  .sweep-action-row {
+    gap: 8px;
+    margin-top: 8px;
   }
 }

@@ -219,7 +219,8 @@ function resizeScopeCanvas() {
   const canvas = elements.waveformScope;
   const dpr = window.devicePixelRatio || 1;
   const width = Math.max(Math.round(canvas.clientWidth * dpr), 1);
-  const height = Math.max(Math.round(SCOPE_HEIGHT * dpr), 1);
+  const cssHeight = canvas.clientHeight || SCOPE_HEIGHT;
+  const height = Math.max(Math.round(cssHeight * dpr), 1);
 
   if (canvas.width === width && canvas.height === height) {
     return;
