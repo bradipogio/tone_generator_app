@@ -32,6 +32,9 @@
 * {
   box-sizing: border-box;
   -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .sr-only {
@@ -106,6 +109,12 @@ select {
   outline: none;
   box-shadow: var(--shadow-small);
   transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
+}
+
+input[type="number"] {
+  -webkit-touch-callout: default;
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 button:focus-visible,
