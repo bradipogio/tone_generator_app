@@ -313,15 +313,33 @@ function drawIdleScopeTitle() {
   const width = canvas.width;
   const height = canvas.height;
   const dpr = window.devicePixelRatio || 1;
+  const titleLines = [
+    "█████ ████  █   █ █████",
+    "  █   █  █  ██  █ █",
+    "  █   █  █  █ █ █ ████",
+    "  █   █  █  █  ██ █",
+    "  █   ████  █   █ █████",
+  ];
+  const subtitle = "GENERATOR";
+  const fontSize = Math.max(7, Math.min(11 * dpr, width / 29));
+  const lineHeight = fontSize * 1.05;
+  const totalHeight = lineHeight * titleLines.length + 13 * dpr;
+  const startY = height * 0.5 - totalHeight * 0.5 + lineHeight * 0.5;
 
   context.clearRect(0, 0, width, height);
   context.fillStyle = "#080808";
   context.fillRect(0, 0, width, height);
   context.fillStyle = "#ffe14d";
-  context.font = `${Math.round(20 * dpr)}px "Avenir Next", "Segoe UI", sans-serif`;
+  context.font = `800 ${fontSize}px "SFMono-Regular", "Menlo", "Consolas", monospace`;
   context.textAlign = "center";
   context.textBaseline = "middle";
-  context.fillText("TONE GENERATOR", width * 0.5, height * 0.5);
+
+  titleLines.forEach((line, index) => {
+    context.fillText(line, width * 0.5, startY + lineHeight * index);
+  });
+
+  context.font = `800 ${Math.max(9, 10 * dpr)}px "Avenir Next", "Segoe UI", sans-serif`;
+  context.fillText(subtitle, width * 0.5, startY + lineHeight * titleLines.length + 10 * dpr);
   context.textAlign = "start";
 }
 
