@@ -313,26 +313,32 @@ function drawIdleScopeTitle() {
   const width = canvas.width;
   const height = canvas.height;
   const dpr = window.devicePixelRatio || 1;
-  const letters = {
-    T: ["111", "010", "010", "010", "010"],
-    O: ["111", "101", "101", "101", "111"],
-    N: ["101", "111", "111", "111", "101"],
-    E: ["111", "100", "111", "100", "111"],
-  };
-  const word = ["T", "O", "N", "E"];
-  const letterWidth = 3;
-  const letterHeight = 5;
-  const gap = 1;
-  const gridWidth = word.length * letterWidth + (word.length - 1) * gap;
-  const cell = Math.floor(
-    Math.min((width - 26 * dpr) / gridWidth, (height - 34 * dpr) / letterHeight),
+  const titlePattern = [
+    "1111011110100101111",
+    "0110010010110101000",
+    "0110010010101101110",
+    "0110010010100101000",
+    "0110011110100101111",
+  ];
+  const rows = titlePattern.length;
+  const columns = titlePattern[0].length;
+  const paddingX = 12 * dpr;
+  const paddingY = 8 * dpr;
+  const gap = Math.max(1, Math.round(1.25 * dpr));
+  const titleAreaHeight = height * 0.72;
+  const block = Math.max(
+    3,
+    Math.floor(
+      Math.min(
+        (width - paddingX * 2 - gap * (columns - 1)) / columns,
+        (titleAreaHeight - paddingY * 2 - gap * (rows - 1)) / rows,
+      ),
+    ),
   );
-  const block = Math.max(4, cell);
-  const mark = Math.max(1.5 * dpr, block * 0.16);
-  const titleWidth = gridWidth * block;
-  const titleHeight = letterHeight * block;
+  const titleWidth = columns * block + (columns - 1) * gap;
+  const titleHeight = rows * block + (rows - 1) * gap;
   const startX = (width - titleWidth) * 0.5;
-  const startY = Math.max(11 * dpr, (height - titleHeight) * 0.42);
+  const startY = Math.max(paddingY, (titleAreaHeight - titleHeight) * 0.5);
   const subtitleSize = Math.max(9, Math.min(12 * dpr, width / 24));
 
   context.clearRect(0, 0, width, height);
@@ -340,20 +346,15 @@ function drawIdleScopeTitle() {
   context.fillRect(0, 0, width, height);
   context.fillStyle = "#ffe14d";
 
-  word.forEach((letter, letterIndex) => {
-    const pattern = letters[letter];
-    const letterX = startX + letterIndex * (letterWidth + gap) * block;
+  titlePattern.forEach((row, rowIndex) => {
+    Array.from(row).forEach((bit, columnIndex) => {
+      if (bit !== "1") {
+        return;
+      }
 
-    pattern.forEach((row, rowIndex) => {
-      Array.from(row).forEach((bit, columnIndex) => {
-        if (bit !== "1") {
-          return;
-        }
-
-        const x = letterX + columnIndex * block;
-        const y = startY + rowIndex * block;
-        context.fillRect(x, y, block - mark, block - mark);
-      });
+      const x = startX + columnIndex * (block + gap);
+      const y = startY + rowIndex * (block + gap);
+      context.fillRect(x, y, block, block);
     });
   });
 
