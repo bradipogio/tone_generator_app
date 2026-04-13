@@ -313,33 +313,21 @@ function drawIdleScopeTitle() {
   const width = canvas.width;
   const height = canvas.height;
   const dpr = window.devicePixelRatio || 1;
-  const titleLines = [
-    "####  ####  #   #  #####",
-    "  #   #  #  ##  #  #",
-    "  #   #  #  # # #  ####",
-    "  #   #  #  #  ##  #",
-    "  #   ####  #   #  #####",
-  ];
-  const subtitle = "GENERATOR";
-  const fontSize = Math.max(8, Math.min(13 * dpr, width / 27));
-  const lineHeight = fontSize * 1.08;
-  const totalHeight = lineHeight * titleLines.length + 14 * dpr;
-  const startY = height * 0.5 - totalHeight * 0.5 + lineHeight * 0.5;
+  const titleSize = Math.max(24, Math.min(36 * dpr, width / 5.2));
+  const subtitleSize = Math.max(10, Math.min(13 * dpr, width / 22));
+  const titleY = height * 0.46;
+  const subtitleY = height * 0.72;
 
   context.clearRect(0, 0, width, height);
   context.fillStyle = "#080808";
   context.fillRect(0, 0, width, height);
   context.fillStyle = "#ffe14d";
-  context.font = `900 ${fontSize}px "SFMono-Regular", "Menlo", "Consolas", monospace`;
+  context.font = `900 ${titleSize}px "Avenir Next", "Arial Black", "Segoe UI", sans-serif`;
   context.textAlign = "center";
   context.textBaseline = "middle";
-
-  titleLines.forEach((line, index) => {
-    context.fillText(line, width * 0.5, startY + lineHeight * index);
-  });
-
-  context.font = `900 ${Math.max(10, 11 * dpr)}px "Avenir Next", "Segoe UI", sans-serif`;
-  context.fillText(subtitle, width * 0.5, startY + lineHeight * titleLines.length + 10 * dpr);
+  context.fillText("TONE", width * 0.5, titleY);
+  context.font = `900 ${subtitleSize}px "SFMono-Regular", "Menlo", "Consolas", monospace`;
+  context.fillText("GENERATOR", width * 0.5, subtitleY);
   context.textAlign = "start";
 }
 
