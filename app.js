@@ -138,7 +138,10 @@ const elements = {
   channelInputs: Array.from(document.querySelectorAll('input[name="channel"]')),
   sweepDurationInputs: Array.from(document.querySelectorAll('input[name="sweepDuration"]')),
   scopePanel: document.getElementById("scopePanel"),
+  scanMeta: document.getElementById("scanMeta"),
+  scanNav: document.getElementById("scanNav"),
   scanCounter: document.getElementById("scanCounter"),
+  scanDeleteButton: document.getElementById("scanDeleteButton"),
   scanPrevButton: document.getElementById("scanPrevButton"),
   scanNextButton: document.getElementById("scanNextButton"),
   waveformScope: document.getElementById("waveformScope"),
@@ -274,6 +277,26 @@ function clearScope() {
   context.clearRect(0, 0, canvas.width, canvas.height);
 }
 
+function drawIdleScopeTitle() {
+  resizeScopeCanvas();
+
+  const canvas = elements.waveformScope;
+  const context = getScopeContext();
+  const width = canvas.width;
+  const height = canvas.height;
+  const dpr = window.devicePixelRatio || 1;
+
+  context.clearRect(0, 0, width, height);
+  context.fillStyle = "#080808";
+  context.fillRect(0, 0, width, height);
+  context.fillStyle = "#ffe14d";
+  context.font = `${Math.round(20 * dpr)}px "Avenir Next", "Segoe UI", sans-serif`;
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.fillText("TONE GENERATOR", width * 0.5, height * 0.5);
+  context.textAlign = "start";
+}
+
 function shouldDrawScope() {
   return Boolean(
     state.isPlaying &&
@@ -388,7 +411,12 @@ function stopScope() {
     return;
   }
 
-  clearScope();
+  if (scanState.selectedIndex >= 0) {
+    drawScanGraph();
+    return;
+  }
+
+  drawIdleScopeTitle();
 }
 
 function resetMicScan() {
@@ -420,8 +448,10 @@ function updateScanNav() {
   const number = total ? scanState.selectedIndex + 1 : 0;
   const isLocked = scanState.isActive;
 
-  elements.scanCounter.parentElement.classList.toggle("is-empty", total === 0);
+  elements.scanMeta.classList.toggle("is-empty", total === 0);
+  elements.scanNav.classList.toggle("is-empty", total === 0);
   elements.scanCounter.textContent = total ? String(number) : "0";
+  elements.scanDeleteButton.disabled = isLocked || total === 0;
   elements.scanPrevButton.disabled = isLocked || total <= 1 || scanState.selectedIndex <= 0;
   elements.scanNextButton.disabled = isLocked || total <= 1 || scanState.selectedIndex >= total - 1;
 }
@@ -447,6 +477,27 @@ function shiftVisibleScan(direction) {
   }
 
   showScanAt(scanState.selectedIndex + direction);
+}
+
+function deleteVisibleScan() {
+  if (scanState.isActive || scanState.selectedIndex < 0) {
+    return;
+  }
+
+  scanState.history.splice(scanState.selectedIndex, 1);
+  scanState.isComplete = false;
+  scanState.message = "";
+
+  if (!scanState.history.length) {
+    scanState.selectedIndex = -1;
+    updateScanNav();
+    drawIdleScopeTitle();
+    return;
+  }
+
+  scanState.selectedIndex = clamp(scanState.selectedIndex, 0, scanState.history.length - 1);
+  updateScanNav();
+  drawScanGraph();
 }
 
 function saveCurrentScanToHistory() {
@@ -789,6 +840,8 @@ function finishMicScan() {
   scanState.peaks = findScanPeaks();
   scanState.message = scanState.peaks.length ? "" : "Nessun picco netto";
   saveCurrentScanToHistory();
+  scanState.isComplete = false;
+  scanState.message = "";
   drawScanGraph();
 }
 
@@ -1522,10 +1575,23 @@ function bindScopeResize() {
   resizeScopeCanvas();
   if (scanState.isActive || scanState.isComplete || scanState.message) {
     drawScanGraph();
+  } else if (scanState.selectedIndex >= 0) {
+    drawScanGraph();
   } else {
-    clearScope();
+    drawIdleScopeTitle();
   }
-  window.addEventListener("resize", resizeScopeCanvas, { passive: true });
+  window.addEventListener(
+    "resize",
+    () => {
+      if (scanState.isActive || scanState.isComplete || scanState.message || scanState.selectedIndex >= 0) {
+        drawScanGraph();
+        return;
+      }
+
+      drawIdleScopeTitle();
+    },
+    { passive: true },
+  );
 }
 
 function bindPageLifecycle() {
@@ -1549,8 +1615,10 @@ function bindPageLifecycle() {
 
     if (state.isPlaying) {
       startScope();
+    } else if (scanState.selectedIndex >= 0 || scanState.message) {
+      drawScanGraph();
     } else {
-      clearScope();
+      drawIdleScopeTitle();
     }
   };
 
@@ -1944,6 +2012,10 @@ function bindScanNavigation() {
     shiftVisibleScan(1);
   });
 
+  elements.scanDeleteButton.addEventListener("click", () => {
+    deleteVisibleScan();
+  });
+
   elements.scopePanel.addEventListener(
     "wheel",
     (event) => {
@@ -1972,7 +2044,7 @@ function bindScanNavigation() {
   );
 
   elements.scopePanel.addEventListener("pointerdown", (event) => {
-    if (event.target instanceof Element && event.target.closest(".scan-nav")) {
+    if (event.target instanceof Element && event.target.closest(".scan-nav, .scan-meta")) {
       return;
     }
 

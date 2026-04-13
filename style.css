@@ -331,7 +331,8 @@ legend {
 
 .scope-panel {
   position: relative;
-  margin-top: 18px;
+  margin-top: 0;
+  margin-bottom: 12px;
   min-height: 112px;
   border: 4px solid var(--ink);
   border-radius: var(--radius);
@@ -340,22 +341,32 @@ legend {
   overflow: hidden;
 }
 
+.scan-meta,
 .scan-nav {
   position: absolute;
   top: 7px;
-  right: 7px;
   z-index: 2;
   display: flex;
   align-items: center;
   gap: 4px;
 }
 
+.scan-meta {
+  left: 7px;
+}
+
+.scan-nav {
+  right: 7px;
+}
+
+.scan-meta.is-empty,
 .scan-nav.is-empty {
   display: none;
 }
 
 .scan-counter,
-.scan-nav-button {
+.scan-nav-button,
+.scan-delete-button {
   display: grid;
   place-items: center;
   min-width: 24px;
@@ -370,11 +381,31 @@ legend {
   box-shadow: 2px 2px 0 var(--ink);
 }
 
-.scan-nav-button {
+.scan-nav-button,
+.scan-delete-button {
   padding: 0;
 }
 
-.scan-nav-button:disabled {
+.scan-delete-button {
+  background: var(--secondary);
+  color: #ffffff;
+}
+
+.scan-delete-button svg {
+  width: 15px;
+  height: 15px;
+}
+
+.scan-delete-button path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.scan-nav-button:disabled,
+.scan-delete-button:disabled {
   opacity: 0.45;
   cursor: default;
 }
@@ -526,7 +557,7 @@ legend {
   color: var(--muted);
   font-size: 1rem;
   font-weight: 800;
-  box-shadow: var(--shadow-small);
+  box-shadow: 7px 7px 0 var(--ink);
   transition:
     border-color 140ms ease,
     background 140ms ease,
@@ -536,7 +567,7 @@ legend {
 }
 
 .channel-option input:not(:checked) + span {
-  opacity: 0.78;
+  opacity: 1;
 }
 
 .wave-picker {
@@ -667,8 +698,8 @@ legend {
 
 .channel-option input:checked + span {
   opacity: 1;
-  transform: translate(3px, 3px);
-  box-shadow: var(--shadow-pressed);
+  transform: translate(5px, 5px);
+  box-shadow: 2px 2px 0 var(--ink);
 }
 
 .channel-option:first-child input:checked + span {
@@ -1138,22 +1169,37 @@ input[type="range"]::-moz-range-thumb {
   }
 
   .scope-panel {
-    margin-top: 12px;
+    margin-top: 0;
+    margin-bottom: 10px;
     min-height: 76px;
     border-width: 3px;
   }
 
+  .scan-meta,
   .scan-nav {
     top: 5px;
+  }
+
+  .scan-meta {
+    left: 5px;
+  }
+
+  .scan-nav {
     right: 5px;
   }
 
   .scan-counter,
-  .scan-nav-button {
+  .scan-nav-button,
+  .scan-delete-button {
     min-width: 22px;
     height: 20px;
     font-size: 0.68rem;
     box-shadow: 1px 1px 0 var(--ink);
+  }
+
+  .scan-delete-button svg {
+    width: 14px;
+    height: 14px;
   }
 
   .waveform-scope {
@@ -1166,6 +1212,12 @@ input[type="range"]::-moz-range-thumb {
 
   .channel-option span {
     min-height: 40px;
+    box-shadow: 5px 5px 0 var(--ink);
+  }
+
+  .channel-option input:checked + span {
+    transform: translate(4px, 4px);
+    box-shadow: 1px 1px 0 var(--ink);
   }
 
   .frequency-grid-main {

@@ -21,6 +21,24 @@
   </head>
   <body>
     <main class="app-shell">
+      <section id="scopePanel" class="scope-panel">
+        <div id="scanMeta" class="scan-meta is-empty" aria-label="Scan corrente">
+          <span id="scanCounter" class="scan-counter">0</span>
+          <button id="scanDeleteButton" class="scan-delete-button" type="button" aria-label="Elimina scan">
+            <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+              <path d="M7 8H17L16.2 20H7.8L7 8Z" />
+              <path d="M5 6H19" />
+              <path d="M9 6L10 4H14L15 6" />
+            </svg>
+          </button>
+        </div>
+        <div id="scanNav" class="scan-nav is-empty" aria-label="Navigazione scan">
+          <button id="scanPrevButton" class="scan-nav-button" type="button" aria-label="Scan precedente">&lt;</button>
+          <button id="scanNextButton" class="scan-nav-button" type="button" aria-label="Scan successivo">&gt;</button>
+        </div>
+        <canvas id="waveformScope" class="waveform-scope"></canvas>
+      </section>
+
       <section class="panel panel-main">
         <fieldset class="field channel-field">
           <legend class="sr-only">Canale</legend>
@@ -240,14 +258,6 @@
         </div>
       </section>
 
-      <section id="scopePanel" class="scope-panel">
-        <div class="scan-nav" aria-label="Navigazione scan">
-          <span id="scanCounter" class="scan-counter">0</span>
-          <button id="scanPrevButton" class="scan-nav-button" type="button" aria-label="Scan precedente">&lt;</button>
-          <button id="scanNextButton" class="scan-nav-button" type="button" aria-label="Scan successivo">&gt;</button>
-        </div>
-        <canvas id="waveformScope" class="waveform-scope"></canvas>
-      </section>
     </main>
 
     <script src="app.js"></script>
