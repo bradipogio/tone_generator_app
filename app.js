@@ -313,21 +313,54 @@ function drawIdleScopeTitle() {
   const width = canvas.width;
   const height = canvas.height;
   const dpr = window.devicePixelRatio || 1;
-  const titleSize = Math.max(24, Math.min(36 * dpr, width / 5.2));
-  const subtitleSize = Math.max(10, Math.min(13 * dpr, width / 22));
-  const titleY = height * 0.46;
-  const subtitleY = height * 0.72;
+  const letters = {
+    T: ["111", "010", "010", "010", "010"],
+    O: ["111", "101", "101", "101", "111"],
+    N: ["101", "111", "111", "111", "101"],
+    E: ["111", "100", "111", "100", "111"],
+  };
+  const word = ["T", "O", "N", "E"];
+  const letterWidth = 3;
+  const letterHeight = 5;
+  const gap = 1;
+  const gridWidth = word.length * letterWidth + (word.length - 1) * gap;
+  const cell = Math.floor(
+    Math.min((width - 26 * dpr) / gridWidth, (height - 34 * dpr) / letterHeight),
+  );
+  const block = Math.max(4, cell);
+  const mark = Math.max(1.5 * dpr, block * 0.16);
+  const titleWidth = gridWidth * block;
+  const titleHeight = letterHeight * block;
+  const startX = (width - titleWidth) * 0.5;
+  const startY = Math.max(11 * dpr, (height - titleHeight) * 0.42);
+  const subtitleSize = Math.max(9, Math.min(12 * dpr, width / 24));
 
   context.clearRect(0, 0, width, height);
   context.fillStyle = "#080808";
   context.fillRect(0, 0, width, height);
   context.fillStyle = "#ffe14d";
-  context.font = `900 ${titleSize}px "Avenir Next", "Arial Black", "Segoe UI", sans-serif`;
+
+  word.forEach((letter, letterIndex) => {
+    const pattern = letters[letter];
+    const letterX = startX + letterIndex * (letterWidth + gap) * block;
+
+    pattern.forEach((row, rowIndex) => {
+      Array.from(row).forEach((bit, columnIndex) => {
+        if (bit !== "1") {
+          return;
+        }
+
+        const x = letterX + columnIndex * block;
+        const y = startY + rowIndex * block;
+        context.fillRect(x, y, block - mark, block - mark);
+      });
+    });
+  });
+
+  context.font = `900 ${subtitleSize}px "SFMono-Regular", "Menlo", "Consolas", monospace`;
   context.textAlign = "center";
   context.textBaseline = "middle";
-  context.fillText("TONE", width * 0.5, titleY);
-  context.font = `900 ${subtitleSize}px "SFMono-Regular", "Menlo", "Consolas", monospace`;
-  context.fillText("GENERATOR", width * 0.5, subtitleY);
+  context.fillText("GENERATOR", width * 0.5, startY + titleHeight + 11 * dpr);
   context.textAlign = "start";
 }
 
