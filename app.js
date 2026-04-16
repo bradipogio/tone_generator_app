@@ -932,7 +932,7 @@ async function startMicScan() {
   }
 
   try {
-    requestMicAudioSession();
+    requestPlaybackAudioSession();
 
     try {
       micStream = await navigator.mediaDevices.getUserMedia({
@@ -1334,10 +1334,6 @@ function setAudioSessionType(type) {
 
 function requestPlaybackAudioSession() {
   setAudioSessionType("playback");
-}
-
-function requestMicAudioSession() {
-  setAudioSessionType("play-and-record");
 }
 
 async function ensureRunningContext() {
